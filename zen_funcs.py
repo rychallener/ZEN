@@ -2,22 +2,54 @@
 
 import numpy as np
 
-def zen_init(values):
+def zen_init(data, pixels):
 	
 	"""
-	values: 2d array
-	"""
-	
-	N, frames= np.shape(values)
-	
-	#remove astrophysics by normalizing
-	
-	for t in range(frames):
-		phat[:,t]	= values[:,t]/np.sum(values[:,t])
+    This function does the initial calculations for pixel-level decorrelation.
 
-	pbar	= np.mean(phat, axis=1)
-	
-	dP	= phat - np.reshape(pbar,(N,1))
+    Arguments
+    ---------
+	data: 3D float array of images
+
+    pixels: 2D array coordinates of pixels to consider
+      EX: array([[ 0,  1],
+                 [ 2,  3],
+                 [ 4,  5],
+                 [ 6,  7],
+                 [ 8,  9],
+                 [10, 11],
+                 [12, 13],
+                 [14, 15],
+                 [16, 17],
+                 [18, 19]])
+
+	"""
+	# Set number of frames and image dimensions
+	nframes, ny, nx = np.shape(data)
+
+    # Set number of pixels
+    npix = len(pixels)   
+
+    # Initialize array for flux values of pixels
+    p = np.zeros((nframes, npix))
+
+    # Extract flux values from images
+    for i in range(npix):
+        for j in range(nframes):
+            p[j,i] = data[j, pixels[i][0], pixels[i][1]]
+
+    # Initialize array for normalized flux of pixels
+    phat = np.zeros(p.shape)
+    
+	# Remove astrophysics by normalizing
+	for t in range(nframes):
+		phat[t]	= p[t]/np.sum(p[t])
+
+    # Calculate mean flux through all frames at each pixel
+	pbar	= np.mean(phat, axis=0)
+
+    # Difference from the mean flux
+	dP	= phat - pbar
 
 	return(phat, dP) #decide which one it is? 
 
