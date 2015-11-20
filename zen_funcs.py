@@ -148,7 +148,7 @@ def eclipse(times, period, t0, i, r, p, phase_m, depth):
 
 # 	return(dS)
 
-def zen(par, x, npix):
+def zen(par, x, phat, npix):
     """
     Zen function.
 
