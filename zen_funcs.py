@@ -1,6 +1,7 @@
 #em 2 nov 2015
 
 import numpy as np
+import
 
 def zen_init(data, pixels):
 	
@@ -29,7 +30,7 @@ def zen_init(data, pixels):
     --------
 
     Example:
-    -------
+    --------
     >>> import numpy as np
     >>> data = np.arange(200).reshape(8,5,5)
     >>> pixels = [[1,2],[2,1],[2,2],[2,3],[3,2]]
@@ -68,7 +69,7 @@ def zen_init(data, pixels):
     # Difference from the mean flux
 	dP	= phat - pbar
 
-	return(phat, dP) #decide which one it is? 
+	return(phat, dP)
 
 def eclipse(times, period, t0, i, r, p, phase_m, depth):
 	
@@ -98,8 +99,6 @@ def eclipse(times, period, t0, i, r, p, phase_m, depth):
 	
     P_ecl	= np.zeros(np.size(times))
 
-	phase	= ((times - t0) % period) / period
-
     r	= a * np.sqrt(1-(np.sin(i)**2) * (np.cos((phase-phase_m) * 2 * np.pi)**2))
 
     in_ecl	= np.where((r < 1-p) & (phase > .1) & (phase < .9))
@@ -115,38 +114,6 @@ def eclipse(times, period, t0, i, r, p, phase_m, depth):
     F_ecl=depth*(1-P_ecl)
 
 	return(F_ecl)
-
-# def zen(phat, pld_params, frame_times, eclipse_params, linramp, quadramp, offset):
-
-# 	"""
-# 	phat: 2d array
-# 		normalized pixel values in each frame 
-# 		or should we use pbar?
-# 	pld_params: 1d array
-# 		first derivative of signal wrt each pixel, fitted parameter	
-# 	eclipse_params: 1D array
-# 		go into eclipse/phase curve model to tell what eclipse is
-# 	ramp: number?
-# 		linear ramp term
-# 	quadramp: number?
-# 		quadratic ramp term
-# 	offset: number?
-# 		constant offset	
-# 	"""
-# 	N, times= np.shape(phat)
-	
-# 	dS	= np.zeros(times)
-
-# 	eclipse = eclipse(frame_times,*eclipse_params)
-	
-# 	for t in range(times):
-# 		for i in range(N):
-# 			dS[t]	= dS[t] + pld_params[i] * phat[t]
-		
-# 		dS[t]	= dS[t] + eclipse[t] + linramp * t + quadramp * t**2 + offset
-
-
-# 	return(dS)
 
 def zen(par, x, phat, npix):
     """
@@ -191,7 +158,7 @@ def zen(par, x, phat, npix):
 
     # Calculate the model
     # FINDME: allow for general ramp function
-    y = PLD + eclipse + par[i+1]*x + par[i+2]*x**2 + par[i+3]
+    y = par[npix] * par(1 + PLD) * eclipse * (par[-3] + par[-2]*x + par[-1]*x**2)
 
     return y
 
