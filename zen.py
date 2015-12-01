@@ -15,40 +15,46 @@ import sys
 import numpy as np
 import zen_funcs as zf
 import matplotlib.pyplot as plt
-sys.path.appen("./MCcubed/src/")
+sys.path.append("./MCcubed/src/")
+sys.path.append("./poetlib")
 import mccubed as mc3
 import manageevent as me
 
-def main(eventname, cfile):
-  # Load the POET event object (up through p5)
-  event_pht = me.loadevent(eventname + "_pht")
-  event_ctr = me.loadevent(eventname + "_ctr", load=['data'])
+def main():
+    eventname = sys.argv[1]
+    cfile     = sys.argv[2]
+    
+    # Load the POET event object (up through p5)
+    event_chk = me.loadevent(eventname + "_chk")
+    event_pht = me.loadevent(eventname + "_pht")
+    event_ctr = me.loadevent(eventname + "_ctr", load=['data', 'uncd'])
 
-  data  = event_ctr.data
-  uncd  = event_ctr.uncd
-  phase = event_ctr.phase
+    data  = event_ctr.data
+    uncd  = event_ctr.uncd
+    phase = event_chk.phase[0]
 
-  phot    = event_pht.fp.aplev
-  photerr = event_pht.fp.aperr
-  
-  # Default to 3x3 box of pixels
-  if pixels = None:
-      avgcentx = np.floor(np.average(event.fp.x))
-      avgcenty = np.floor(np.average(event.fp.y))
-      avgcent  = [avgcenty, avgcentx]
-      pixels = []
-      for i in range(3):
-          for j in range(3):
-              pixels.append([avgcenty - 1 + i, avgcentx - 1 + j])
+    phot    = event_pht.fp.aplev[0]
+    photerr = event_pht.fp.aperr[0]
+    
+    # Default to 3x3 box of pixels
+    avgcentx = np.floor(np.average(event_pht.fp.x))
+    avgcenty = np.floor(np.average(event_pht.fp.y))
+    avgcent  = [avgcenty, avgcentx]
+    pixels = []
+	   
+    for i in range(3):
+        for j in range(3):
+            pixels.append([avgcenty - 1 + i, avgcentx - 1 + j])
+		  
+    phat, dP = zf.zen_init(data, pixels)
 
-  phat, dP = zf.zen_init(data, pixels)
+    npix  = len(pixels)
+    necl  = 6
 
-  npix  = len(pixels)
-  necl  = 6
+    # FINDME: This is the general structure we need for MC3, but names/numbers
+    # are subject to change
+    allp, bp = mc3.mcmc(phot, photerr, func=zf.zen,
+                        indparams=[phase, phat, npix], cfile=cfile)
 
-  # FINDME: This is the general structure we need for MC3, but names/numbers are subject to change
-  allp, bp = mc3.mcmc(phot, photerr, func=zf.zen, indparams=[phase, phat, npix],
-                      cfile=cfile)
-
-  return
+	return
 
