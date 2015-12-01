@@ -57,4 +57,3 @@ def main():
                         indparams=[phase, phat, npix], cfile=cfile)
 
 	return
-
