@@ -44,7 +44,7 @@ def main(eventname, cfile):
   phat, dP = zf.zen_init(data, pixels)
 
   npix  = len(pixels)
-  necl  = 6
+  necl  = 6 #number of eclipse parameters
 
   # FINDME: This is the general structure we need for MC3, but names/numbers are subject to change
   allp, bp = mc3.mcmc(phot, photerr, func=zf.zen, indparams=[phase, phat, npix],
