@@ -20,7 +20,6 @@ sys.path.append("./poetlib")
 import mccubed as mc3
 import manageevent as me
 
-<<<<<<< HEAD
 def main(eventname, cfile):
   # Load the POET event object (up through p5)
   event_pht = me.loadevent(eventname + "_pht")
@@ -53,7 +52,7 @@ def main(eventname, cfile):
                       cfile=cfile)
 
   return
-=======
+
 def main():
     eventname = sys.argv[1]
     cfile     = sys.argv[2]
@@ -91,5 +90,5 @@ def main():
                         indparams=[phase, phat, npix], cfile=cfile)
 
 	return
->>>>>>> Miscellaneous bug fixes
+
 
