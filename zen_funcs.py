@@ -87,9 +87,9 @@ def eclipse(t, eclparams):
 	t34   = eclparams[4]
 	flux  = eclparams[5]
 
-	# If zero depth, set model to a flat line at flux value
+	# If zero depth, set model to a flat line at 1
 	if depth == 0:
-		y = np.ones(t.size)*flux
+		y = np.ones(t.size)
 		return y
 
 	# Beginning of eclipse
@@ -135,7 +135,7 @@ def eclipse(t, eclparams):
 				y[i] = 1 - depth/np.abs(depth)/np.pi * \
 				  (p**2 * k0 + k1 - np.sqrt((4 * z**2 - (1 + z**2 - p**2)**2)/4))
 
-		y[i] *= flux
+		#y[i] *= flux
 
 	return y
 
@@ -172,7 +172,7 @@ def zen(par, x, phat, npix):
 	
 	# Calculate eclipse model using parameters
 	# FINDME: remove hard-coded number of ramp params
-	eclparams = par[npix:-2]
+	eclparams = par[npix:-3]
 	eclmodel = eclipse(x, eclparams)
 	
 	# Calculate the sum of the flux from all considered pixels
@@ -181,8 +181,9 @@ def zen(par, x, phat, npix):
 
 	# Calculate the model
 	# FINDME: allow for general ramp function
-	y = (1 + PLD) * eclmodel * (1 + par[-2]*x + par[-1]*x**2)
+	#y = ((1 + PLD) + (eclmodel - 1) + (par[-3] + par[-2]*x + par[-1]*x**2))*eclparams[-1]
 
+	y = eclparams[-1] * (1 + PLD + (eclmodel - 1) + (par[-3] + par[-2]*x + par[-1]*x**2))
 	return y
 
 
