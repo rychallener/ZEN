@@ -25,7 +25,7 @@ def main():
     cfile     = sys.argv[2]
     
     # Load the POET event object (up through p5)
-    event_chk = me.loadevent(eventname + "_chk")
+    event_chk = me.loadevent(eventname + "_p5c")
     event_pht = me.loadevent(eventname + "_pht")
     event_ctr = me.loadevent(eventname + "_ctr", load=['data', 'uncd'])
 
@@ -37,8 +37,8 @@ def main():
     photerr = event_pht.fp.aperr[0]
     
     # Default to 3x3 box of pixels
-    avgcentx = np.floor(np.average(event_pht.fp.x))
-    avgcenty = np.floor(np.average(event_pht.fp.y))
+    avgcentx = np.floor(np.average(event_pht.fp.x) + 0.5)
+    avgcenty = np.floor(np.average(event_pht.fp.y) + 0.5)
     avgcent  = [avgcenty, avgcentx]
     pixels = []
 	   
@@ -51,9 +51,15 @@ def main():
     npix  = len(pixels)
     necl  = 6 #number of eclipse parameters
 
+    #photerr = photerr/np.sqrt(np.mean(phot))
+    #phot    = phot/np.mean(phot)
+    
     # FINDME: This is the general structure we need for MC3, but names/numbers
     # are subject to change
     allp, bp = mc3.mcmc(phot, photerr, func=zf.zen,
                         indparams=[phase, phat, npix], cfile=cfile)
 
-	return
+    return
+
+if __name__ == "__main__":
+    main()
