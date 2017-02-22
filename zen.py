@@ -18,9 +18,9 @@ import zen_funcs as zf
 import zenplots as zp
 import matplotlib.pyplot as plt
 import ConfigParser
-sys.path.insert(1, "./mccubed/MCcubed/mc/")
+sys.path.insert(1, "./mccubed/")
 sys.path.insert(2, "./poetlib")
-import mcmc as mc3
+import MCcubed as mc3
 import manageevent as me
 
 def main():
