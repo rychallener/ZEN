@@ -41,8 +41,8 @@ def main():
     configdict = dict(config.items("MCMC"))
 
     # Pull some variables out
-    plots = configdict['plots']
-    bins  = configdict['bins']
+    plots = bool(configdict['plots'])
+    bins  = bool(configdict['bins'])
 
     # Get initial parameters and stepsize arrays from the config
     stepsize = [float(s) for s in configdict['stepsize'].split()]
