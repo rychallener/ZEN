@@ -207,13 +207,13 @@ def main():
             plt.title("Reduced Chi-squared of PLD model fit for different bin sizes")
             plt.savefig("redchisq.png")
         # If not binning, use regular photometry
-        else:
-            photnorm    = phot    / phot.mean()
-            photerrnorm = photerr / phot.mean()
-            binphotnorm = photnorm.copy()
-            binphoterrnorm = photerrnorm.copy()
-            binphase = phasegood.copy()
-            binphat  = phat.copy()
+    else:
+        photnorm    = phot    / phot.mean()
+        photerrnorm = photerr / phot.mean()
+        binphotnorm = photnorm.copy()
+        binphoterrnorm = photerrnorm.copy()
+        binphase = phasegood.copy()
+        binphat  = phat.copy()
             
     print("Beginning MCMC.")
     # FINDME: This is the general structure we need for MC3, but names/numbers
