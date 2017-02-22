@@ -10,8 +10,11 @@
 #   2015-11-02 em       Initial implementation
 #   2015-11-20 rchallen Updates for use with POET
 #   2016-10-07 rchallen Plotting functions
+#   2016-02-20 rchallen Lots of bug fixes. Made git repo.
 
+import os
 import sys
+import time
 import numpy as np
 import scipy.optimize as sco
 import zen_funcs as zf
@@ -31,6 +34,11 @@ def main():
     # Parse the command line arguments
     eventname = sys.argv[1]
     cfile     = sys.argv[2]
+
+    outdir = time.strftime('%Y-%m-%d-%H:%M:%S') + '/'
+
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
 
     days2sec = 86400
 
@@ -205,7 +213,7 @@ def main():
             plt.xlabel("Bin width (seconds)")
             plt.ylabel("Reduced Chi-squared")
             plt.title("Reduced Chi-squared of PLD model fit for different bin sizes")
-            plt.savefig("redchisq.png")
+            plt.savefig(outdir+"redchisq.png")
         # If not binning, use regular photometry
     else:
         photnorm    = phot    / phot.mean()
@@ -257,7 +265,9 @@ def main():
     binphaseplot, binbestecl = zf.bindata(binphase,  bestecl,  binnumplot)
     binphotnormplot = binphotplot / binphotplot.mean()
     binphoterrnormplot = binphoterrplot / binphotplot.mean()
-    zp.normlc(binphaseplot[:-1], binphotnormplot[:-1], binphoterrnormplot[:-1], binnoeclfit[:-1], binbestecl[:-1], 1, title='Normalized Binned WASP-29b Data With Eclipse Models')
+    zp.normlc(binphaseplot[:-1], binphotnormplot[:-1], binphoterrnormplot[:-1],
+              binnoeclfit[:-1], binbestecl[:-1], 1,
+              title='Normalized Binned WASP-29b Data With Eclipse Models', savedir=outdir)
 
 if __name__ == "__main__":
     main()

@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 pltfmt  = ['b-',  'g-',  'r-',  'c-',  'm-',  'y-',  'k-',  'w-' ]
 
-def normlc(phase, phot, photerr, noecl, bestecl, fignum, j=0, title='Title'):
+def normlc(phase, phot, photerr, noecl, bestecl, fignum, j=0, title='Title',
+           savedir = './'):
     plt.rcParams.update({'legend.fontsize':13})
     plt.figure(fignum, figsize=(8,6))
     plt.clf()
@@ -34,4 +35,4 @@ def normlc(phase, phot, photerr, noecl, bestecl, fignum, j=0, title='Title'):
     plt.ylabel('Residuals',size=14)
 
 
-    plt.savefig('normlc.png')
+    plt.savefig(savedir + 'normlc.png')
