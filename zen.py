@@ -212,6 +212,7 @@ def main():
             photerrnorm = photerr / phot.mean()
             binphotnorm = photnorm.copy()
             binphoterrnorm = photerrnorm.copy()
+            binphase = phasegood.copy()
             
     print("Beginning MCMC.")
     # FINDME: This is the general structure we need for MC3, but names/numbers
