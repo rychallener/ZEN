@@ -18,9 +18,9 @@ import zen_funcs as zf
 import zenplots as zp
 import matplotlib.pyplot as plt
 import ConfigParser
-sys.path.append("./mccubed/MCcubed/mc/")
-sys.path.append("./poetlib")
-import mccubed as mc3
+sys.path.insert(1, "./mccubed/MCcubed/mc/")
+sys.path.insert(2, "./poetlib")
+import mcmc as mc3
 import manageevent as me
 
 def main():
@@ -213,6 +213,7 @@ def main():
             binphotnorm = photnorm.copy()
             binphoterrnorm = photerrnorm.copy()
             binphase = phasegood.copy()
+            binphat  = phat.copy()
             
     print("Beginning MCMC.")
     # FINDME: This is the general structure we need for MC3, but names/numbers
