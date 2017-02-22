@@ -40,6 +40,10 @@ def main():
     config.read([cfile])
     configdict = dict(config.items("MCMC"))
 
+    # Pull some variables out
+    plots = configdict['plots']
+    bins  = configdict['bins']
+
     # Get initial parameters and stepsize arrays from the config
     stepsize = [float(s) for s in configdict['stepsize'].split()]
     params   = [float(s) for s in configdict['params'].split()]
@@ -115,92 +119,100 @@ def main():
     phatgood  = phatgood.T
     phasegood = event_chk.phase[np.where(event_chk.good)]
 
-    # Width of bins to try
-    bintry = np.array([8.,
-                       12.,
-                       16.,
-                       20.,
-                       24.,
-                       28.,
-                       32.,
-                       #36.,
-                       40.,
-                       44.,
-                       48.,
-                       52.,
-                       56.,
-                       60.,
-                       64.])
+    # Do binning if desired
+    if bins:
+        # Width of bins to try
+        bintry = np.array([8.,
+                           12.,
+                           16.,
+                           20.,
+                           24.,
+                           28.,
+                           32.,
+                           #36.,
+                           40.,
+                           44.,
+                           48.,
+                           52.,
+                           56.,
+                           60.,
+                           64.])
 
-    bintry = np.arange(4,129,dtype=float)
+        bintry = np.arange(4,129,dtype=float)
 
-    # Convert bin widths to phase from seconds
-    bintry /= (event_chk.period * days2sec)
+        # Convert bin widths to phase from seconds
+        bintry /= (event_chk.period * days2sec)
 
-    # Initialize best chi-squared to an insanely large number
-    # for comparison later
-    chibest = 1e300
+        # Initialize best chi-squared to an insanely large number
+        # for comparison later
+        chibest = 1e300
 
-    chisqarray = np.zeros(len(bintry))
+        chisqarray = np.zeros(len(bintry))
 
-    # Optimize bin size
-    print("Optimizing bin size.")
-    for i in range(len(bintry)):
-        print("Least-squares optimization for " + str(bintry[i] * event_chk.period * days2sec)
-              + " second bin width.")
-        
-        # Bin the phase and phat
-        for j in range(npix):
-            if j == 0:
-                binphase,     binphat = zf.bindata(phasegood, phatgood[:,j], bintry[i])
-            else:
-                binphase, tempbinphat =  zf.bindata(phasegood, phatgood[:,j], bintry[i])
-                binphat = np.column_stack((binphat, tempbinphat))
-        # Bin the photometry and error
-        # Phase is binned again but is identical to
-        # the previously binned phase.
-        binphase, binphot, binphoterr = zf.bindata(phasegood, phot, bintry[i], yerr=photerr)
+        # Optimize bin size
+        print("Optimizing bin size.")
+        for i in range(len(bintry)):
+            print("Least-squares optimization for " + str(bintry[i] * event_chk.period * days2sec)
+                  + " second bin width.")
 
-        # Normalize
-        photnorm    = phot    / phot.mean()
-        photerrnorm = photerr / phot.mean()
-    
-        binphotnorm    = binphot    / binphot.mean()
-        binphoterrnorm = binphoterr / binphot.mean()
+            # Bin the phase and phat
+            for j in range(npix):
+                if j == 0:
+                    binphase,     binphat = zf.bindata(phasegood, phatgood[:,j], bintry[i])
+                else:
+                    binphase, tempbinphat =  zf.bindata(phasegood, phatgood[:,j], bintry[i])
+                    binphat = np.column_stack((binphat, tempbinphat))
+            # Bin the photometry and error
+            # Phase is binned again but is identical to
+            # the previously binned phase.
+            binphase, binphot, binphoterr = zf.bindata(phasegood, phot, bintry[i], yerr=photerr)
 
-        # Make xphat for use with zen_optimize
-        xphatshape = (binphat.shape[0], binphat.shape[1]+1)
-        xphat      = np.zeros(xphatshape)
+            # Normalize
+            photnorm    = phot    / phot.mean()
+            photerrnorm = photerr / phot.mean()
 
-        xphat[:,:-1] = binphat
-        xphat[:, -1] = binphase
+            binphotnorm    = binphot    / binphot.mean()
+            binphoterrnorm = binphoterr / binphot.mean()
 
-        # Minimize chi-squared for this bin size
-        ret = sco.curve_fit(zf.zen_optimize, xphat, binphotnorm, p0=params, sigma=binphoterrnorm, maxfev = 100000)
+            # Make xphat for use with zen_optimize
+            xphatshape = (binphat.shape[0], binphat.shape[1]+1)
+            xphat      = np.zeros(xphatshape)
 
-        # Calculate the best-fitting model
-        model = zf.zen(ret[0], binphase, binphat, npix)
+            xphat[:,:-1] = binphat
+            xphat[:, -1] = binphase
 
-        # Calculate reduced chi-squared
-        chisq = np.sum((binphotnorm - model)**2/binphoterrnorm**2)
-        redchisq = chisq/len(binphotnorm)
-        print("Reduced chi-squared: " + str(redchisq))
+            # Minimize chi-squared for this bin size
+            ret = sco.curve_fit(zf.zen_optimize, xphat, binphotnorm, p0=params, sigma=binphoterrnorm, maxfev = 100000)
 
-        chisqarray[i] = redchisq
+            # Calculate the best-fitting model
+            model = zf.zen(ret[0], binphase, binphat, npix)
 
-        # Save results if this fit is better
-        if redchisq < chibest:
-            chibest = redchisq
-            binbest = bintry[i]
+            # Calculate reduced chi-squared
+            chisq = np.sum((binphotnorm - model)**2/binphoterrnorm**2)
+            redchisq = chisq/len(binphotnorm)
+            print("Reduced chi-squared: " + str(redchisq))
 
-    if plots:
-        plt.clf()
-        plt.plot(bintry * event_chk.period * days2sec, chisqarray)
-        plt.xlabel("Bin width (seconds)")
-        plt.ylabel("Reduced Chi-squared")
-        plt.title("Reduced Chi-squared of PLD model fit for different bin sizes")
-        plt.savefig("redchisq.png")
+            chisqarray[i] = redchisq
 
+            # Save results if this fit is better
+            if redchisq < chibest:
+                chibest = redchisq
+                binbest = bintry[i]
+
+        if plots:
+            plt.clf()
+            plt.plot(bintry * event_chk.period * days2sec, chisqarray)
+            plt.xlabel("Bin width (seconds)")
+            plt.ylabel("Reduced Chi-squared")
+            plt.title("Reduced Chi-squared of PLD model fit for different bin sizes")
+            plt.savefig("redchisq.png")
+        # If not binning, use regular photometry
+        else:
+            photnorm    = phot    / phot.mean()
+            photerrnorm = photerr / phot.mean()
+            binphotnorm = photnorm.copy()
+            binphoterrnorm = photerrnorm.copy()
+            
     print("Beginning MCMC.")
     # FINDME: This is the general structure we need for MC3, but names/numbers
     # are subject to change
