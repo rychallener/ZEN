@@ -39,7 +39,7 @@ def zen_init(data, pixels):
 	2015-11-02 em	   Initial implementation
 	2015-11-20 rchallen Generalized for any given pixels
 
-d	"""
+	"""
 	# Set number of frames and image dimensions
 	nframes, ny, nx, nsets = np.shape(data)
 
@@ -183,14 +183,131 @@ def zen(par, x, phat, npix):
 	# FINDME: allow for general ramp function
 	#y = ((1 + PLD) + (eclmodel - 1) + (par[-3] + par[-2]*x + par[-1]*x**2))*eclparams[-1]
 
-	y = eclparams[-1] * (1 + PLD + (eclmodel - 1) + (par[-3] + par[-2]*x + par[-1]*x**2))
+	y = PLD + eclparams[-1] * (eclmodel - 1) + (par[-3] + par[-2]*x + par[-1]*x**2)
 	return y
 
+def bindata(x, y, width, yerr=None):
+    
+    bins = np.arange(min(x), max(x), width)
+
+    binmask = np.ones(len(bins), dtype=bool)
+    
+    digitized = np.digitize(x, bins)
+    
+    bin_means_x = np.zeros(len(bins))
+    bin_means_y = np.zeros(len(bins))
+
+    if yerr != None:
+        bin_means_yerr = np.zeros(len(bins))
+    
+    for i in range(1, len(bins) + 1):
+        bin_means_y[i-1] = y[digitized == i].mean()
+        if len(y[digitized == i]) == 0:
+                print("Uh oh")
+                binmask[i-1] = 0
+        bin_means_x[i-1] = x[digitized == i].mean()
+        if len(x[digitized == i]) == 0:
+                binmask[i-1] = 0
+        if yerr != None:
+            bin_means_yerr[i-1] = np.sqrt(np.sum(np.array(yerr[digitized == i])**2)) / len(np.array(yerr[digitized == i]))
+
+    if yerr != None:
+        return  np.array(bin_means_x[binmask]),\
+                np.array(bin_means_y[binmask]),\
+                         bin_means_yerr[binmask]
+    else:
+        return  np.array(bin_means_x[binmask]),\
+                np.array(bin_means_y[binmask])
+
+def flux(phase, phot, phat):
+    '''
+    Find the stellar flux by chi-squared minimization.
+    '''
+    npix  = phat.shape[1]
+    ndata = phat.shape[0]
+
+    searchrange = np.linspace(0.5-0.01, 0.5+0.01,100)
+
+    bestres = 1e300
+    
+    for i in searchrange:
+      eclparams = [i, 0.1, 1, 0.0006, 0.0006, 1]
+      ecl = zf.eclipse(phase, eclparams)
+      xx = np.c_[phat, ecl-1, phase, phase**2]
+      x, res, rank, s = np.linalg.lstsq(xx, phot)
+      if res < bestres:
+        bestres = res
+        bestecl = ecl
+        bestx   = x
+        bestxx  = xx
+    print(res)
+
+    sol = np.dot(bestxx, bestx)
+
+    flux = np.sum(bestx[:npix])
+
+    return flux
+    
+def read_MCMC_out(MCfile):
+    """
+    Read the MCMC output log file. Extract the best fitting parameters.
+
+    Taken from BART's bestFit.py at
+    https://github.com/exosports/BART
+    """
+    # Open file to read
+    f = open(MCfile, 'r')
+    lines = np.asarray(f.readlines())
+    f.close() 
+
+    # Find where the data starts and ends:
+    for ini in np.arange(len(lines)):
+        if lines[ini].startswith(' Best-fit params'):
+            break
+    ini += 1
+    end = ini
+    for end in np.arange(ini, len(lines)):
+        if lines[end].strip() == "":
+            break
+
+    # Read data:
+    bestP = np.zeros(end-ini, np.double)
+    uncer = np.zeros(end-ini, np.double)
+    for i in np.arange(ini, end):
+        parvalues = lines[i].split()
+        bestP[i-ini] = parvalues[0]
+        uncer[i-ini] = parvalues[1]
+
+    return bestP, uncer
+
+def get_params(bestP, stepsize, params):
+    """
+    Get correct number of all parameters from stepsize
+
+    Original code taken from BART's bestFit.py at
+    https://github.com/exosports/BART
+    """
+    j = 0
+    allParams = np.zeros(len(stepsize))
+    for i in np.arange(len(stepsize)):
+        if stepsize[i] > 0.0:
+            allParams[i] = bestP[j]
+            j +=1
+        else:
+            allParams[i] = params[i]
+
+    # Loop again to fill in where we have negative step size
+    for i in np.arange(len(stepsize)):
+        if stepsize[i] < 0.0:
+            allParams[i] = allParams[int(-stepsize[i]-1)]
+            
+    return allParams
 
 
-
-
-
-
-
-
+def zen_optimize(xphat, *arg):
+    par = np.array(arg)
+    
+    phat = xphat[:,:-1].copy()
+    x    = xphat[:, -1].copy()
+    npix = phat.shape[1]
+    return zen(par, x, phat, npix)
