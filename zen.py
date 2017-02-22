@@ -60,8 +60,8 @@ def main():
     phot    = event_pht.fp.aplev[np.where(event_chk.good)]
     photerr = event_pht.fp.aperr[np.where(event_chk.good)]
 
-    xavg = np.floor(np.average(event_pht.fp.x))
-    yavg = np.floor(np.average(event_pht.fp.y))
+    xavg = np.int(np.floor(np.average(event_pht.fp.x)))
+    yavg = np.int(np.floor(np.average(event_pht.fp.y)))
 
     boxsize = 10
     
