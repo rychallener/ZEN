@@ -35,6 +35,7 @@ def main():
     days2sec = 86400
 
     # Read the config file into a dictionary
+    print("Reading the config file.")
     config = ConfigParser.SafeConfigParser()
     config.read([cfile])
     configdict = dict(config.items("MCMC"))
@@ -42,8 +43,9 @@ def main():
     # Get initial parameters and stepsize arrays from the config
     stepsize = [float(s) for s in configdict['stepsize'].split()]
     params   = [float(s) for s in configdict['params'].split()]
-    
+
     # Load the POET event object (up through p5)
+    print("Loading the POET event object.")
     event_chk = me.loadevent(eventname + "_p5c")
     event_pht = me.loadevent(eventname + "_pht")
     event_ctr = me.loadevent(eventname + "_ctr", load=['data', 'uncd', 'mask'])
@@ -54,6 +56,7 @@ def main():
 
 
     # Identify the bright pixels to use
+    print("Identifying brightest pixels.")
     nx = data.shape[1]
     ny = data.shape[2]
     
@@ -91,7 +94,8 @@ def main():
     # for i in range(3):
     #     for j in range(3):
     #         pixels.append([avgcenty - 1 + i, avgcentx - 1 + j])
-    
+
+    print("Doing preparatory calculations.")
     phat, dP = zf.zen_init(data, pixels)
 
     phatgood = np.zeros(len(event_chk.good[0]))
@@ -140,6 +144,7 @@ def main():
     chisqarray = np.zeros(len(bintry))
 
     # Optimize bin size
+    print("Optimizing bin size.")
     for i in range(len(bintry)):
         print("Least-squares optimization for " + str(bintry[i] * event_chk.period * days2sec)
               + " second bin width.")
@@ -195,7 +200,8 @@ def main():
         plt.ylabel("Reduced Chi-squared")
         plt.title("Reduced Chi-squared of PLD model fit for different bin sizes")
         plt.savefig("redchisq.png")
-    
+
+    print("Beginning MCMC.")
     # FINDME: This is the general structure we need for MC3, but names/numbers
     # are subject to change
     allp, bp = mc3.mcmc(binphotnorm, binphoterrnorm, func=zf.zen,
@@ -230,6 +236,7 @@ def main():
     bestecl = depth*(zf.eclipse(binphase, allParams[npix:npix+necl])-1) + 1
 
     # Make plots
+    print("Making plots.")
     binnumplot = 61
     binphaseplot, binphotplot, binphoterrplot = zf.bindata(phasegood, phot, binnumplot, yerr=photerr)
     binphaseplot, binnoeclfit = zf.bindata(binphase, noeclfit, binnumplot)
