@@ -214,55 +214,55 @@ def main():
             plt.ylabel("Reduced Chi-squared")
             plt.title("Reduced Chi-squared of PLD model fit for different bin sizes")
             plt.savefig(outdir+"redchisq.png")
-        # If not binning, use regular photometry
+    # If not binning, use regular photometry
     else:
-        photnorm    = phot    / phot.mean()
-        photerrnorm = photerr / phot.mean()
-        binphotnorm = photnorm.copy()
+        photnorm       = phot    / phot.mean()
+        photerrnorm    = photerr / phot.mean()
+        binphotnorm    = photnorm.copy()
         binphoterrnorm = photerrnorm.copy()
-        binphase = phasegood.copy()
-        binphat  = phatgood.copy()
+        binphase       = phasegood.copy()
+        binphat        = phatgood.copy()
             
     print("Beginning MCMC.")
     # FINDME: This is the general structure we need for MC3, but names/numbers
     # are subject to change
-    allp, bp = mc3.mcmc(binphotnorm, binphoterrnorm, func=zf.zen,
-                        indparams=[binphase, binphat, npix], cfile=cfile)
+    bp, CRlo, CRhi, stdp, posterior, Zchain = mc3.mcmc(binphotnorm, binphoterrnorm,
+                                        func=zf.zen,
+                                        indparams=[binphase, binphat, npix], cfile=cfile)
 
+    print(bp)
 
     # Get initial parameters and stepsize arrays from the config
     stepsize = [float(s) for s in configdict['stepsize'].split()]
     params   = [float(s) for s in configdict['params'].split()]
 
-    # Populate an array with fixed and varying parameters
-    allParams = zf.get_params(bp, stepsize, params)
-
     # Calculate the best-fitting model
-    bestfit = zf.zen(allParams, binphase, binphat, npix)
+    bestfit = zf.zen(bp, binphase, binphat, npix)
 
     # Get parameter names array to match params with names
     parnames = configdict["parname"].split()
 
     # Make array of parameters, with eclipse depth replaced with 0
-    noeclParams = np.zeros(len(allParams))
+    noeclParams = np.zeros(len(bp))
 
     for i in range(len(noeclParams)):
         if parnames[i] == 'Depth':
             noeclParams[i] == 0
-            depth = allParams[i]
+            depth = bp[i]
         else:
-            noeclParams[i] = allParams[i]
+            noeclParams[i] = bp[i]
 
     noeclfit = zf.zen(noeclParams, binphase, binphat, npix)
 
-    bestecl = depth*(zf.eclipse(binphase, allParams[npix:npix+necl])-1) + 1
+    bestecl = depth*(zf.eclipse(binphase, bp[npix:npix+necl])-1) + 1
 
     # Make plots
     print("Making plots.")
-    binnumplot = 61
-    binphaseplot, binphotplot, binphoterrplot = zf.bindata(phasegood, phot, binnumplot, yerr=photerr)
-    binphaseplot, binnoeclfit = zf.bindata(binphase, noeclfit, binnumplot)
-    binphaseplot, binbestecl = zf.bindata(binphase,  bestecl,  binnumplot)
+    binnumplot = 200
+    binplotwidth = (phasegood[-1]-phasegood[0])/binnumplot
+    binphaseplot, binphotplot, binphoterrplot = zf.bindata(phasegood, phot, binplotwidth, yerr=photerr)
+    binphaseplot, binnoeclfit = zf.bindata(phasegood, noeclfit, binplotwidth)
+    binphaseplot, binbestecl = zf.bindata(phasegood,  bestecl,  binplotwidth)
     binphotnormplot = binphotplot / binphotplot.mean()
     binphoterrnormplot = binphoterrplot / binphotplot.mean()
     zp.normlc(binphaseplot[:-1], binphotnormplot[:-1], binphoterrnormplot[:-1],

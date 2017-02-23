@@ -21,7 +21,7 @@ def normlc(phase, phot, photerr, noecl, bestecl, fignum, j=0, title='Title',
     plt.yticks(size=13)
     plt.ylabel('Normalized Flux',size=14)
     
-    plt.legend(loc='best')
+    plt.legend()
     xmin, xmax = plt.xlim()
 
     plt.axes([0.15,0.1,0.8,0.2])

@@ -197,7 +197,7 @@ def bindata(x, y, width, yerr=None):
     bin_means_x = np.zeros(len(bins))
     bin_means_y = np.zeros(len(bins))
 
-    if yerr != None:
+    if type(yerr) != type(None):
         bin_means_yerr = np.zeros(len(bins))
     
     for i in range(1, len(bins) + 1):
@@ -208,10 +208,10 @@ def bindata(x, y, width, yerr=None):
         bin_means_x[i-1] = x[digitized == i].mean()
         if len(x[digitized == i]) == 0:
                 binmask[i-1] = 0
-        if yerr != None:
+        if type(yerr) != type(None):
             bin_means_yerr[i-1] = np.sqrt(np.sum(np.array(yerr[digitized == i])**2)) / len(np.array(yerr[digitized == i]))
 
-    if yerr != None:
+    if type(yerr) != type(None):
         return  np.array(bin_means_x[binmask]),\
                 np.array(bin_means_y[binmask]),\
                          bin_means_yerr[binmask]
