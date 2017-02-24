@@ -226,11 +226,19 @@ def main():
     print("Beginning MCMC.")
     # FINDME: This is the general structure we need for MC3, but names/numbers
     # are subject to change
-    bp, CRlo, CRhi, stdp, posterior, Zchain = mc3.mcmc(binphotnorm, binphoterrnorm,
-                                        func=zf.zen,
-                                        indparams=[binphase, binphat, npix], cfile=cfile)
+    savefile = configdict['savefile']
+    log      = configdict['logfile']
+    
+    bp, CRlo, CRhi, stdp, posterior, Zchain = mc3.mcmc(binphotnorm,
+                                                       binphoterrnorm,
+                                                       func=zf.zen,
+                                                       indparams=[binphase,
+                                                                  binphat,
+                                                                  npix],
+                                                       cfile=cfile,
+                                                       savefile=outdir+savefile,
+                                                       log=outdir+log)
 
-    print(bp)
 
     # Get initial parameters and stepsize arrays from the config
     stepsize = [float(s) for s in configdict['stepsize'].split()]
