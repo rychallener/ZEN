@@ -35,7 +35,7 @@ def main():
     eventname = sys.argv[1]
     cfile     = sys.argv[2]
 
-    outdir = time.strftime('%Y-%m-%d-%H:%M:%S') + '/'
+    outdir = time.strftime('%Y-%m-%d-%H:%M:%S') + '_' + eventname + '/'
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
@@ -130,14 +130,15 @@ def main():
     # Do binning if desired
     if bins:
         # Width of bins to try
-        bintry = np.array([8.,
+        bintry = np.array([ 4.,
+                            8.,
                            12.,
                            16.,
                            20.,
                            24.,
                            28.,
                            32.,
-                           #36.,
+                           36.,
                            40.,
                            44.,
                            48.,
@@ -146,7 +147,7 @@ def main():
                            60.,
                            64.])
 
-        bintry = np.arange(4,129,dtype=float)
+        #bintry = np.arange(4,129,dtype=float)
 
         # Convert bin widths to phase from seconds
         bintry /= (event_chk.period * days2sec)
@@ -168,7 +169,7 @@ def main():
                 if j == 0:
                     binphase,     binphat = zf.bindata(phasegood, phatgood[:,j], bintry[i])
                 else:
-                    binphase, tempbinphat =  zf.bindata(phasegood, phatgood[:,j], bintry[i])
+                    binphase, tempbinphat = zf.bindata(phasegood, phatgood[:,j], bintry[i])
                     binphat = np.column_stack((binphat, tempbinphat))
             # Bin the photometry and error
             # Phase is binned again but is identical to
@@ -207,6 +208,18 @@ def main():
                 chibest = redchisq
                 binbest = bintry[i]
 
+        # Rebin back to the best binning
+        binphase, binphot, binphoterr = zf.bindata(phasegood, phot, binbest, yerr=photerr)
+        binphotnorm    = binphot    / binphot.mean()
+        binphoterrnorm = binphoterr / binphot.mean()
+
+        for j in range(npix):
+            if j == 0:
+                binphase,     binphat = zf.bindata(phasegood, phatgood[:,j], binbest)
+            else:
+                binphase, tempbinphat = zf.bindata(phasegood, phatgood[:,j], binbest)
+                binphat = np.column_stack((binphat, tempbinphat))
+
         if plots:
             plt.clf()
             plt.plot(bintry * event_chk.period * days2sec, chisqarray)
@@ -214,6 +227,7 @@ def main():
             plt.ylabel("Reduced Chi-squared")
             plt.title("Reduced Chi-squared of PLD model fit for different bin sizes")
             plt.savefig(outdir+"redchisq.png")
+            
     # If not binning, use regular photometry
     else:
         photnorm       = phot    / phot.mean()
@@ -222,10 +236,9 @@ def main():
         binphoterrnorm = photerrnorm.copy()
         binphase       = phasegood.copy()
         binphat        = phatgood.copy()
-            
+
+    # And we're off!    
     print("Beginning MCMC.")
-    # FINDME: This is the general structure we need for MC3, but names/numbers
-    # are subject to change
     savefile = configdict['savefile']
     log      = configdict['logfile']
     
@@ -269,8 +282,8 @@ def main():
     binnumplot = 200
     binplotwidth = (phasegood[-1]-phasegood[0])/binnumplot
     binphaseplot, binphotplot, binphoterrplot = zf.bindata(phasegood, phot, binplotwidth, yerr=photerr)
-    binphaseplot, binnoeclfit = zf.bindata(phasegood, noeclfit, binplotwidth)
-    binphaseplot, binbestecl = zf.bindata(phasegood,  bestecl,  binplotwidth)
+    binphaseplot, binnoeclfit = zf.bindata(binphase, noeclfit, binplotwidth)
+    binphaseplot, binbestecl  = zf.bindata(binphase,  bestecl,  binplotwidth)
     binphotnormplot = binphotplot / binphotplot.mean()
     binphoterrnormplot = binphoterrplot / binphotplot.mean()
     zp.normlc(binphaseplot[:-1], binphotnormplot[:-1], binphoterrnormplot[:-1],
