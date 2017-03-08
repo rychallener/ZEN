@@ -46,6 +46,9 @@ def main():
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
+    logfile = 'zen.log'
+    lf = open(outdir + logfile, 'a')
+
     days2sec = 86400
 
     # Read the config file into a dictionary
@@ -219,6 +222,13 @@ def main():
         binphase, binphot, binphoterr = zf.bindata(phasegood, phot, binbest, yerr=photerr)
         binphotnorm    = binphot    / binphot.mean()
         binphoterrnorm = binphoterr / binphot.mean()
+
+        print("Best bin size: " +
+              str(binbest * event_chk.period * days2sec) +
+              " seconds.")
+        lf.write("Best bin size: " +
+                 str(binbest * event_chk.period * days2sec) +
+                 " seconds.")
 
         for j in range(npix):
             if j == 0:
