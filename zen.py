@@ -35,8 +35,14 @@ def main():
     eventname = sys.argv[1]
     cfile     = sys.argv[2]
 
-    outdir = time.strftime('%Y-%m-%d-%H:%M:%S') + '_' + eventname + '/'
+    outdir = time.strftime('%Y-%m-%d-%H:%M:%S') + '_' + eventname 
 
+    try:
+        outdirext = sys.argv[3]
+        outdir = outdir + '-' + outdirext + '/'
+    except:
+        outdir = outdir + '/'
+    
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
@@ -161,7 +167,8 @@ def main():
         # Optimize bin size
         print("Optimizing bin size.")
         for i in range(len(bintry)):
-            print("Least-squares optimization for " + str(bintry[i] * event_chk.period * days2sec)
+            print("Least-squares optimization for "
+                  + str(bintry[i] * event_chk.period * days2sec)
                   + " second bin width.")
 
             # Bin the phase and phat
@@ -281,10 +288,10 @@ def main():
     print("Making plots.")
     binnumplot = 200
     binplotwidth = (phasegood[-1]-phasegood[0])/binnumplot
-    binphaseplot, binphotplot, binphoterrplot = zf.bindata(phasegood, phot, binplotwidth, yerr=photerr)
-    binphaseplot, binnoeclfit = zf.bindata(binphase, noeclfit, binplotwidth)
-    binphaseplot, binbestecl  = zf.bindata(binphase,  bestecl,  binplotwidth)
-    binphotnormplot = binphotplot / binphotplot.mean()
+    binphaseplot, binphotplot, binphoterrplot = zf.bindata(binphase, binphot,  binplotwidth, yerr=binphoterr)
+    binphaseplot, binnoeclfit                 = zf.bindata(binphase, noeclfit, binplotwidth)
+    binphaseplot, binbestecl                  = zf.bindata(binphase, bestecl,  binplotwidth)
+    binphotnormplot    = binphotplot    / binphotplot.mean()
     binphoterrnormplot = binphoterrplot / binphotplot.mean()
     zp.normlc(binphaseplot[:-1], binphotnormplot[:-1], binphoterrnormplot[:-1],
               binnoeclfit[:-1], binbestecl[:-1], 1,
