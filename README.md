@@ -1,4 +1,5 @@
 ### ZEN
+> Zen Eliminates Noise
 
 This is an implementation of Drake Deming's Pixel-Level Decorrelation (PLD).
 
