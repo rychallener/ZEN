@@ -12,7 +12,7 @@ To clone the repo:
   git clone --recursive https://github.com/rychallener/ZEN zen
 ```
 
-You have to compile the [MCcubed](https://github.com/pcubillos/MCcubed package:
+You have to compile the [MCcubed](https://github.com/pcubillos/MCcubed) package:
 ```shell
   cd zen
   cd mccubed
