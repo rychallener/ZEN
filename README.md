@@ -1,6 +1,11 @@
-# ZEN
+### ZEN
 
 This is an implementation of Drake Deming's Pixel-Level Decorrelation (PLD).
+
+### Team Members:
+* [Ryan Challener](https://github.com/rychallener/) (UCF) <rchallen@knights.ucf.edu>
+* Andrew Foster (UCF)
+* Em DeLarme (UCF)
 
 To clone the repo:
 ```shell
