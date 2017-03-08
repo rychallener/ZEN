@@ -25,4 +25,4 @@ To run the code, first copy all p3, p4, and p5 data outputs from POET to the zen
   zen.py <eventname> zen.cfg
 ```
 
-where <eventname> is the event code (e.g. wa029bs11).
+where eventname is the event code (e.g. wa029bs11).
