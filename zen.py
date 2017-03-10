@@ -171,11 +171,11 @@ def main():
         ret = sco.curve_fit(zf.zen_optimize, xphat, photnorm, p0=params, sigma=photerrnorm, maxfev = 100000)
 
         # Calculate the best-fitting model
-        model = zf.zen(ret[0], binphase, binphat, npix)
+        model = zf.zen(ret[0], phasegood, phatgood, npix)
 
         # Calculate reduced chi-squared
-        chisq = np.sum((binphotnorm - model)**2/binphoterrnorm**2)
-        redchisq = chisq/len(binphotnorm)
+        chisq = np.sum((photnorm - model)**2/photerrnorm**2)
+        redchisq = chisq/len(photnorm)
         print("Reduced chi-squared: " + str(redchisq))
 
         chibest = redchisq
