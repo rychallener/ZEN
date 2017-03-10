@@ -187,6 +187,11 @@ def zen(par, x, phat, npix):
 	return y
 
 def bindata(x, y, width, yerr=None):
+    if width == 0:
+        if type(yerr) == type(None):
+            return x, y
+        else:
+            return x, y, yerr
     
     bins = np.arange(min(x), max(x), width)
 

@@ -105,16 +105,6 @@ def main():
 
     for i in range(npix):
         pixels.append([rows[i]+yavg-boxsize,cols[i]+xavg-boxsize])
-    
-    # Default to 3x3 box of pixels
-    # avgcentx = np.floor(np.average(event_pht.fp.x) + 0.5)
-    # avgcenty = np.floor(np.average(event_pht.fp.y) + 0.5)
-    # avgcent  = [avgcenty, avgcentx]
-    # pixels = []
-	   
-    # for i in range(3):
-    #     for j in range(3):
-    #         pixels.append([avgcenty - 1 + i, avgcentx - 1 + j])
 
     print("Doing preparatory calculations.")
     phat, dP = zf.zen_init(data, pixels)
@@ -167,6 +157,30 @@ def main():
 
         chisqarray = np.zeros(len(bintry))
 
+        print("Least-squares optimization for no bins.")
+        xphatshape = (phatgood.shape[0], phatgood.shape[1]+1)
+        xphat      = np.zeros(xphatshape)
+        
+        xphat[:,:-1] = phatgood
+        xphat[:, -1] = phasegood
+        
+        photnorm    = phot    / phot.mean()
+        photerrnorm = photerr / phot.mean()
+
+        # Minimize chi-squared for no bins
+        ret = sco.curve_fit(zf.zen_optimize, xphat, photnorm, p0=params, sigma=photerrnorm, maxfev = 100000)
+
+        # Calculate the best-fitting model
+        model = zf.zen(ret[0], binphase, binphat, npix)
+
+        # Calculate reduced chi-squared
+        chisq = np.sum((binphotnorm - model)**2/binphoterrnorm**2)
+        redchisq = chisq/len(binphotnorm)
+        print("Reduced chi-squared: " + str(redchisq))
+
+        chibest = redchisq
+        binbest = 0
+        
         # Optimize bin size
         print("Optimizing bin size.")
         for i in range(len(bintry)):
