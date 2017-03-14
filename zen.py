@@ -58,8 +58,9 @@ def main():
     configdict = dict(config.items("MCMC"))
 
     # Pull some variables out
-    plots = configdict['plots'] == 'True'
-    bins  = configdict['bins']  == 'True'
+    plots  = configdict['plots'] == 'True'
+    bins   = configdict['bins']  == 'True'
+    titles = configdict['titles'] == 'True'
 
     # Get initial parameters and stepsize arrays from the config
     stepsize = [float(s) for s in configdict['stepsize'].split()]
@@ -256,7 +257,8 @@ def main():
             plt.plot(bintry * event_chk.period * days2sec, chisqarray)
             plt.xlabel("Bin width (seconds)")
             plt.ylabel("Reduced Chi-squared")
-            plt.title("Reduced Chi-squared of PLD model fit for different bin sizes")
+            if titles:
+                plt.title("Reduced Chi-squared of PLD model fit for different bin sizes")
             plt.savefig(outdir+"redchisq.png")
             
     # If not binning, use regular photometry
@@ -312,14 +314,31 @@ def main():
     print("Making plots.")
     binnumplot = 200
     binplotwidth = (phasegood[-1]-phasegood[0])/binnumplot
-    binphaseplot, binphotplot, binphoterrplot = zf.bindata(binphase, binphot,  binplotwidth, yerr=binphoterr)
-    binphaseplot, binnoeclfit                 = zf.bindata(binphase, noeclfit, binplotwidth)
-    binphaseplot, binbestecl                  = zf.bindata(binphase, bestecl,  binplotwidth)
+    binphaseplot, binphotplot, binphoterrplot = zf.bindata(binphase,
+                                                           binphot,
+                                                           binplotwidth,
+                                                           yerr=binphoterr)
+    binphaseplot, binnoeclfit                 = zf.bindata(binphase,
+                                                           noeclfit,
+                                                           binplotwidth)
+    binphaseplot, binbestecl                  = zf.bindata(binphase,
+                                                           bestecl,
+                                                           binplotwidth)
     binphotnormplot    = binphotplot    / binphotplot.mean()
     binphoterrnormplot = binphoterrplot / binphotplot.mean()
-    zp.normlc(binphaseplot[:-1], binphotnormplot[:-1], binphoterrnormplot[:-1],
-              binnoeclfit[:-1], binbestecl[:-1], 1,
-              title='Normalized Binned WASP-29b Data With Eclipse Models', savedir=outdir)
+    
+    if titles:
+        zp.normlc(binphaseplot[:-1], binphotnormplot[:-1],
+                  binphoterrnormplot[:-1], binnoeclfit[:-1],
+                  binbestecl[:-1], 1,
+                  title='Normalized Binned WASP-29b Data With Eclipse Models',
+                  savedir=outdir)
+    else:
+        zp.normlc(binphaseplot[:-1], binphotnormplot[:-1],
+                  binphoterrnormplot[:-1], binnoeclfit[:-1],
+                  binbestecl[:-1], 1,
+                  title='',
+                  savedir=outdir)
 
 if __name__ == "__main__":
     main()
