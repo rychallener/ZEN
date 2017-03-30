@@ -206,44 +206,6 @@ def bindata(x, y, ppb, yerr=None):
     else:
         return binx, biny
 
-def bindata_old(x, y, width, yerr=None):
-    if width == 0:
-        if type(yerr) == type(None):
-            return x, y
-        else:
-            return x, y, yerr
-    
-    bins = np.arange(min(x), max(x), width)
-
-    binmask = np.ones(len(bins), dtype=bool)
-    
-    digitized = np.digitize(x, bins)
-    
-    bin_means_x = np.zeros(len(bins))
-    bin_means_y = np.zeros(len(bins))
-
-    if type(yerr) != type(None):
-        bin_means_yerr = np.zeros(len(bins))
-    
-    for i in range(1, len(bins) + 1):
-        bin_means_y[i-1] = y[digitized == i].mean()
-        if len(y[digitized == i]) == 0:
-                print("Uh oh")
-                binmask[i-1] = 0
-        bin_means_x[i-1] = x[digitized == i].mean()
-        if len(x[digitized == i]) == 0:
-                binmask[i-1] = 0
-        if type(yerr) != type(None):
-            bin_means_yerr[i-1] = np.sqrt(np.sum(np.array(yerr[digitized == i])**2)) / len(np.array(yerr[digitized == i]))
-
-    if type(yerr) != type(None):
-        return  np.array(bin_means_x[binmask]),\
-                np.array(bin_means_y[binmask]),\
-                         bin_means_yerr[binmask]
-    else:
-        return  np.array(bin_means_x[binmask]),\
-                np.array(bin_means_y[binmask])
-
 def flux(phase, phot, phat):
     '''
     Find the stellar flux by chi-squared minimization.
@@ -327,12 +289,3 @@ def get_params(bestP, stepsize, params):
             allParams[i] = allParams[int(-stepsize[i]-1)]
             
     return allParams
-
-
-def zen_optimize(xphat, *arg):
-    par = np.array(arg)
-    
-    phat = xphat[:,:-1].copy()
-    x    = xphat[:, -1].copy()
-    npix = phat.shape[1]
-    return zen(par, x, phat, npix)
