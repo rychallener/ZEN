@@ -134,27 +134,9 @@ def main():
     # Do binning if desired
     if bins:
         # Width of bins to try (points per bin)
-        bintry = np.array([ 1,
-                            2,
-                            6,
-                           10,
-                           14,
-                           18,
-                           22,
-                           26,
-                           30,
-                           34,
-                           38,
-                           42,
-                           46,
-                           50,
-                           54,
-                           58,
-                           62,
-                           66])
-
-        #bintry = np.arange(4,129,dtype=float)
-
+        bintry = np.arange(-2, 259, 4)
+        bintry[0] = 1
+        
         # Initialize array of chi-squared. This will hold the chi-squared valued
         # of the binned residuals compared with a line with slope -0.5. See
         # Deming et al. 2015
@@ -221,7 +203,6 @@ def main():
             binlevel = np.asarray(binlevel)
             sdnrchisq = zf.reschisq(sdnr, binlevel, err)
             chisqarray[i] = sdnrchisq
-            print(chisqarray)
             
         binbest = bintry[np.where(chisqarray == np.min(chisqarray))][0]
 
