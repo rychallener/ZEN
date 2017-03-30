@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 
 # Implementation of PLD algorithm
 # Team members:
@@ -142,28 +142,26 @@ def main():
 
     # Do binning if desired
     if bins:
-        # Width of bins to try
-        bintry = np.array([ 4.,
-                            8.,
-                           12.,
-                           16.,
-                           20.,
-                           24.,
-                           28.,
-                           32.,
-                           36.,
-                           40.,
-                           44.,
-                           48.,
-                           52.,
-                           56.,
-                           60.,
-                           64.])
+        # Width of bins to try (points per bin)
+        bintry = np.array([ 2,
+                            4,
+                            8,
+                           12,
+                           16,
+                           20,
+                           24,
+                           28,
+                           32,
+                           36,
+                           40,
+                           44,
+                           48,
+                           52,
+                           56,
+                           60,
+                           64])
 
         #bintry = np.arange(4,129,dtype=float)
-
-        # Convert bin widths to phase from seconds
-        bintry /= (event_chk.period * days2sec)
 
         # Initialize best chi-squared to an insanely large number
         # for comparison later
@@ -172,11 +170,6 @@ def main():
         chisqarray = np.zeros(len(bintry))
 
         print("Least-squares optimization for no bins.")
-        # xphatshape = (phatgood.shape[0], phatgood.shape[1]+1)
-        # xphat      = np.zeros(xphatshape)
-        
-        # xphat[:,:-1] = phatgood
-        # xphat[:, -1] = phasegood
         
         photnorm    = phot    / phot.mean()
         photerrnorm = photerr / phot.mean()
@@ -195,14 +188,13 @@ def main():
         print("Reduced chi-squared: " + str(redchisq))
 
         chibest = redchisq
-        binbest = 0
+        binbest = 1
         
         # Optimize bin size
         print("Optimizing bin size.")
         for i in range(len(bintry)):
-            print("Least-squares optimization for "
-                  + str(bintry[i] * event_chk.period * days2sec)
-                  + " second bin width.")
+            print("Least-squares optimization for " + str(bintry[i])
+                    + " points per bin.")
 
             # Bin the phase and phat
             for j in range(npix):
@@ -222,13 +214,6 @@ def main():
 
             binphotnorm    = binphot    / binphot.mean()
             binphoterrnorm = binphoterr / binphot.mean()
-
-            # # Make xphat for use with zen_optimize
-            # xphatshape = (binphat.shape[0], binphat.shape[1]+1)
-            # xphat      = np.zeros(xphatshape)
-
-            # xphat[:,:-1] = binphat
-            # xphat[:, -1] = binphase
 
             # Minimize chi-squared for this bin size
             indparams = [binphase, binphat, npix]
@@ -256,12 +241,8 @@ def main():
         binphotnorm    = binphot    / binphot.mean()
         binphoterrnorm = binphoterr / binphot.mean()
 
-        print("Best bin size: " +
-              str(binbest * event_chk.period * days2sec) +
-              " seconds.")
-        lf.write("Best bin size: " +
-                 str(binbest * event_chk.period * days2sec) +
-                 " seconds.")
+        print(   "Best bin size: " + str(binbest) + " points per bin")
+        lf.write("Best bin size: " + str(binbest) + " points per bin")
 
         for j in range(npix):
             if j == 0:
@@ -272,8 +253,8 @@ def main():
 
         if plots:
             plt.clf()
-            plt.plot(bintry * event_chk.period * days2sec, chisqarray)
-            plt.xlabel("Bin width (seconds)")
+            plt.plot(bintry, chisqarray)
+            plt.xlabel("Bin width (ppbin)")
             plt.ylabel("Reduced Chi-squared")
             if titles:
                 plt.title("Reduced Chi-squared of PLD model fit for different bin sizes")
@@ -330,18 +311,17 @@ def main():
 
     # Make plots
     print("Making plots.")
-    binnumplot = 200
-    binplotwidth = (phasegood[-1]-phasegood[0])/binnumplot
+    binnumplot = int(len(binphot)/60)
     binphaseplot, binphotplot, binphoterrplot = zf.bindata(binphase,
                                                            binphot,
-                                                           binplotwidth,
+                                                           binnumplot,
                                                            yerr=binphoterr)
     binphaseplot, binnoeclfit                 = zf.bindata(binphase,
                                                            noeclfit,
-                                                           binplotwidth)
+                                                           binnumplot)
     binphaseplot, binbestecl                  = zf.bindata(binphase,
                                                            bestecl,
-                                                           binplotwidth)
+                                                           binnumplot)
     binphotnormplot    = binphotplot    / binphotplot.mean()
     binphoterrnormplot = binphoterrplot / binphotplot.mean()
     

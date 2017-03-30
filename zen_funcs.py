@@ -186,7 +186,27 @@ def zen(par, x, phat, npix):
 	y = PLD + eclparams[-1] * (eclmodel - 1) + (par[-3] + par[-2]*x + par[-1]*x**2)
 	return y
 
-def bindata(x, y, width, yerr=None):
+def bindata(x, y, ppb, yerr=None):
+    nbin = int(len(x)/ppb)
+
+    binx = np.zeros(nbin)
+    biny = np.zeros(nbin)
+
+    if type(yerr) != type(None):
+        binyerr = np.zeros(nbin)
+
+    for i in range(nbin):
+        binx[i] = np.mean(x[i*ppb:(i+1)*ppb])
+        biny[i] = np.mean(y[i*ppb:(i+1)*ppb])
+        if type(yerr) != type(None):
+            binyerr[i] = (np.sum(yerr[i*ppb:(i+1)*ppb]**2))**.5/ppb
+
+    if type(yerr) != type(None):
+        return binx, biny, binyerr
+    else:
+        return binx, biny
+
+def bindata_old(x, y, width, yerr=None):
     if width == 0:
         if type(yerr) == type(None):
             return x, y
