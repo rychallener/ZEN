@@ -289,3 +289,17 @@ def get_params(bestP, stepsize, params):
             allParams[i] = allParams[int(-stepsize[i]-1)]
             
     return allParams
+
+def reschisq(y, x, yerr):
+    '''
+    Little function to calculate chisq of a log data set against
+    a line with slope -0.5. Used to check residual binning.
+    '''
+    m = -0.5
+    line = np.log10(y[0]) + m * (np.log10(x) - np.log10(x[0]))
+    # We use median of the error here just because the first implementation
+    # of PLD does. It is probably better to weight each point
+    # individually (and in fact, weighting them equally should not
+    # have any effect).
+    chisq = np.sum((np.log10(y) - line)**2/np.median(yerr)**2)
+    return chisq

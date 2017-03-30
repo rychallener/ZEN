@@ -143,52 +143,31 @@ def main():
     # Do binning if desired
     if bins:
         # Width of bins to try (points per bin)
-        bintry = np.array([ 2,
-                            4,
-                            8,
-                           12,
-                           16,
-                           20,
-                           24,
-                           28,
-                           32,
-                           36,
-                           40,
-                           44,
-                           48,
-                           52,
-                           56,
-                           60,
-                           64])
+        bintry = np.array([ 1,
+                            2,
+                            6,
+                           10,
+                           14,
+                           18,
+                           22,
+                           26,
+                           30,
+                           34,
+                           38,
+                           42,
+                           46,
+                           50,
+                           54,
+                           58,
+                           62,
+                           66])
 
         #bintry = np.arange(4,129,dtype=float)
 
-        # Initialize best chi-squared to an insanely large number
-        # for comparison later
-        chibest = 1e300
-
+        # Initialize array of chi-squared. This will hold the chi-squared valued
+        # of the binned residuals compared with a line with slope -0.5. See
+        # Deming et al. 2015
         chisqarray = np.zeros(len(bintry))
-
-        print("Least-squares optimization for no bins.")
-        
-        photnorm    = phot    / phot.mean()
-        photerrnorm = photerr / phot.mean()
-
-        # Minimize chi-squared for no bins
-        indparams = [phasegood, phatgood, npix]
-        chisq, fitbestp, dummy, dummy = mc3.fit.modelfit(params, zf.zen,
-                                                         photnorm,
-                                                         photerrnorm,
-                                                         indparams,
-                                                         stepsize,
-                                                         pmin, pmax)
-
-        # Calculate the best-fitting model
-        redchisq = chisq/len(photnorm)
-        print("Reduced chi-squared: " + str(redchisq))
-
-        chibest = redchisq
-        binbest = 1
         
         # Optimize bin size
         print("Optimizing bin size.")
@@ -224,25 +203,44 @@ def main():
                                                              stepsize,
                                                              pmin, pmax)
 
-            # Calculate reduced chi-squared
-            redchisq = chisq/len(binphotnorm)
-            print("Reduced chi-squared: " + str(redchisq))
-            print("Params: " + str(fitbestp))
+            # Calculate model on unbinned data from parameters of the
+            # chi-squared minimization with this bin size. Calculate
+            # residuals for binning
+            sdnr        = []
+            binlevel    = []
+            err         = []
+            resppb      = 1
+            unbinnedres = photnorm - zf.zen(fitbestp, phasegood, phatgood, npix)
+            resbin = len(phasegood)
+
+            # Bin the residuals, calculate SDNR of binned residuals. Do this
+            # until you are binning to <= 16 points remaining.
+            while resbin > 16:
+                dummy, binnedres = zf.bindata(phasegood, unbinnedres, resppb)
+                sdnr.append(np.std(binnedres))
+                binlevel.append(resppb)
+                err.append(np.std(binnedres)/(2.0*len(binnedres)))
+                resppb *= 2
+                resbin = int(resbin / 2)
+
+            # Calculate chisquared of the various SDNR wrt line of slope -0.5
+            # passing through the SDNR of the unbinned residuals
+            # Record chisquared
+            sdnr     = np.asarray(sdnr)
+            binlevel = np.asarray(binlevel)
+            sdnrchisq = zf.reschisq(sdnr, binlevel, err)
+            chisqarray[i] = sdnrchisq
+            print(chisqarray)
             
-            chisqarray[i] = redchisq
+        binbest = bintry[np.where(chisqarray == np.min(chisqarray))][0]
 
-            # Save results if this fit is better
-            if redchisq < chibest:
-                chibest = redchisq
-                binbest = bintry[i]
-
+        print(   "Best bin size: " + str(binbest) + " points per bin")
+        lf.write("Best bin size: " + str(binbest) + " points per bin")
+        
         # Rebin back to the best binning
         binphase, binphot, binphoterr = zf.bindata(phasegood, phot, binbest, yerr=photerr)
         binphotnorm    = binphot    / binphot.mean()
         binphoterrnorm = binphoterr / binphot.mean()
-
-        print(   "Best bin size: " + str(binbest) + " points per bin")
-        lf.write("Best bin size: " + str(binbest) + " points per bin")
 
         for j in range(npix):
             if j == 0:
@@ -255,9 +253,9 @@ def main():
             plt.clf()
             plt.plot(bintry, chisqarray)
             plt.xlabel("Bin width (ppbin)")
-            plt.ylabel("Reduced Chi-squared")
+            plt.ylabel("Chi-squared")
             if titles:
-                plt.title("Reduced Chi-squared of PLD model fit for different bin sizes")
+                plt.title("Chi-squared of log(SDNR) vs. log(bin width) compared to theory")
             plt.savefig(outdir+"redchisq.png")
             
     # If not binning, use regular photometry
