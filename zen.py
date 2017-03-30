@@ -68,6 +68,9 @@ def main():
     pmin     = [float(s) for s in configdict['pmin'    ].split()]
     pmax     = [float(s) for s in configdict['pmax'    ].split()]
 
+    # Get number of pixels to use from the config
+    npix     = int(configdict['npix'])
+
     # Load the POET event object (up through p5)
     print("Loading the POET event object.")
     event_chk = me.loadevent(eventname + "_p5c")
@@ -96,7 +99,6 @@ def main():
     photavgflat = photavg.flatten()
 
     # Some adjustable parameters that should be at the top of the file
-    npix = 9
     necl = 6 #number of eclipse parameters
 
     flatind = photavgflat.argsort()[-npix:]
