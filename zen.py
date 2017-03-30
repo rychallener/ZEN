@@ -58,26 +58,15 @@ def main():
     configdict = dict(config.items("MCMC"))
 
     # Pull some variables out
-    plots  = configdict['plots'] == 'True'
-    bins   = configdict['bins']  == 'True'
+    plots  = configdict['plots']  == 'True'
+    bins   = configdict['bins']   == 'True'
     titles = configdict['titles'] == 'True'
 
     # Get initial parameters and stepsize arrays from the config
     stepsize = [float(s) for s in configdict['stepsize'].split()]
-    params   = [float(s) for s in configdict['params'].split()]
-    pmin     = [float(s) for s in configdict['pmin'].split()]
-    pmax     = [float(s) for s in configdict['pmax'].split()]
-
-    # for i in range(len(stepsize)):
-    #     if stepsize[i] == 0.0:
-    #         pmin[i] = params[i]
-    #         pmax[i] = params[i]
-    #         print(i)
-    #     if stepsize[i] <  0.0:
-    #         pmin[i]   = params[-1*int(i)]
-    #         pmax[i]   = params[-1*int(i)]
-    #         params[i] = params[-1*int(i)]
-    #         print(i)
+    params   = [float(s) for s in configdict['params'  ].split()]
+    pmin     = [float(s) for s in configdict['pmin'    ].split()]
+    pmax     = [float(s) for s in configdict['pmax'    ].split()]
 
     # Load the POET event object (up through p5)
     print("Loading the POET event object.")
