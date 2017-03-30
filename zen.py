@@ -65,6 +65,19 @@ def main():
     # Get initial parameters and stepsize arrays from the config
     stepsize = [float(s) for s in configdict['stepsize'].split()]
     params   = [float(s) for s in configdict['params'].split()]
+    pmin     = [float(s) for s in configdict['pmin'].split()]
+    pmax     = [float(s) for s in configdict['pmax'].split()]
+
+    # for i in range(len(stepsize)):
+    #     if stepsize[i] == 0.0:
+    #         pmin[i] = params[i]
+    #         pmax[i] = params[i]
+    #         print(i)
+    #     if stepsize[i] <  0.0:
+    #         pmin[i]   = params[-1*int(i)]
+    #         pmax[i]   = params[-1*int(i)]
+    #         params[i] = params[-1*int(i)]
+    #         print(i)
 
     # Load the POET event object (up through p5)
     print("Loading the POET event object.")
@@ -159,23 +172,25 @@ def main():
         chisqarray = np.zeros(len(bintry))
 
         print("Least-squares optimization for no bins.")
-        xphatshape = (phatgood.shape[0], phatgood.shape[1]+1)
-        xphat      = np.zeros(xphatshape)
+        # xphatshape = (phatgood.shape[0], phatgood.shape[1]+1)
+        # xphat      = np.zeros(xphatshape)
         
-        xphat[:,:-1] = phatgood
-        xphat[:, -1] = phasegood
+        # xphat[:,:-1] = phatgood
+        # xphat[:, -1] = phasegood
         
         photnorm    = phot    / phot.mean()
         photerrnorm = photerr / phot.mean()
 
         # Minimize chi-squared for no bins
-        ret = sco.curve_fit(zf.zen_optimize, xphat, photnorm, p0=params, sigma=photerrnorm, maxfev = 100000)
+        indparams = [phasegood, phatgood, npix]
+        chisq, fitbestp, dummy, dummy = mc3.fit.modelfit(params, zf.zen,
+                                                         photnorm,
+                                                         photerrnorm,
+                                                         indparams,
+                                                         stepsize,
+                                                         pmin, pmax)
 
         # Calculate the best-fitting model
-        model = zf.zen(ret[0], phasegood, phatgood, npix)
-
-        # Calculate reduced chi-squared
-        chisq = np.sum((photnorm - model)**2/photerrnorm**2)
         redchisq = chisq/len(photnorm)
         print("Reduced chi-squared: " + str(redchisq))
 
@@ -208,24 +223,27 @@ def main():
             binphotnorm    = binphot    / binphot.mean()
             binphoterrnorm = binphoterr / binphot.mean()
 
-            # Make xphat for use with zen_optimize
-            xphatshape = (binphat.shape[0], binphat.shape[1]+1)
-            xphat      = np.zeros(xphatshape)
+            # # Make xphat for use with zen_optimize
+            # xphatshape = (binphat.shape[0], binphat.shape[1]+1)
+            # xphat      = np.zeros(xphatshape)
 
-            xphat[:,:-1] = binphat
-            xphat[:, -1] = binphase
+            # xphat[:,:-1] = binphat
+            # xphat[:, -1] = binphase
 
             # Minimize chi-squared for this bin size
-            ret = sco.curve_fit(zf.zen_optimize, xphat, binphotnorm, p0=params, sigma=binphoterrnorm, maxfev = 100000)
-
-            # Calculate the best-fitting model
-            model = zf.zen(ret[0], binphase, binphat, npix)
+            indparams = [binphase, binphat, npix]
+            chisq, fitbestp, dummy, dummy = mc3.fit.modelfit(params, zf.zen,
+                                                             binphotnorm,
+                                                             binphoterrnorm,
+                                                             indparams,
+                                                             stepsize,
+                                                             pmin, pmax)
 
             # Calculate reduced chi-squared
-            chisq = np.sum((binphotnorm - model)**2/binphoterrnorm**2)
             redchisq = chisq/len(binphotnorm)
             print("Reduced chi-squared: " + str(redchisq))
-
+            print("Params: " + str(fitbestp))
+            
             chisqarray[i] = redchisq
 
             # Save results if this fit is better
