@@ -71,6 +71,10 @@ def main():
     # Get number of pixels to use from the config
     npix     = int(configdict['npix'])
 
+    # Get preclip
+    preclip  = float(configdict['preclip'])
+    postclip = float(configdict['postclip'])
+    
     # Load the POET event object (up through p5)
     print("Loading the POET event object.")
     event_chk = me.loadevent(eventname + "_p5c")
@@ -79,16 +83,20 @@ def main():
 
     data  = event_ctr.data
     uncd  = event_ctr.uncd
-    phase = event_chk.phase[0]
+    phase = event_chk.phase
 
+    preclipmask  = phase >  preclip
+    postclipmask = phase < postclip
+    clipmask = np.logical_and(preclipmask, postclipmask)
+    mask     = np.logical_and(   clipmask, event_chk.good)
 
     # Identify the bright pixels to use
     print("Identifying brightest pixels.")
     nx = data.shape[1]
     ny = data.shape[2]
     
-    phot    = event_pht.fp.aplev[np.where(event_chk.good)]
-    photerr = event_pht.fp.aperr[np.where(event_chk.good)]
+    phot    = event_pht.fp.aplev[mask]
+    photerr = event_pht.fp.aperr[mask]
 
     xavg = np.int(np.floor(np.average(event_pht.fp.x)))
     yavg = np.int(np.floor(np.average(event_pht.fp.y)))
@@ -114,12 +122,12 @@ def main():
     print("Doing preparatory calculations.")
     phat, dP = zf.zen_init(data, pixels)
 
-    phatgood = np.zeros(len(event_chk.good[0]))
+    phatgood = np.zeros(len(mask))
     
     # Mask out the bad images in phat
     for i in range(npix):
         tempphat = phat[:,i].copy()
-        tempphatgood = tempphat[np.where(event_chk.good[0])]
+        tempphatgood = tempphat[mask[0]]
         if i == 0:
             phatgood = tempphatgood.copy()
         else:
@@ -129,7 +137,7 @@ def main():
         
     # Invert the new array because I lack foresight
     phatgood  = phatgood.T
-    phasegood = event_chk.phase[np.where(event_chk.good)]
+    phasegood = event_chk.phase[mask]
 
     # Do binning if desired
     if bins:
