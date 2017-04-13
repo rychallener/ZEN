@@ -234,7 +234,7 @@ def main():
                     plt.ylabel("Chi-squared")
                     if titles:
                         plt.title("Chi-squared of log(SDNR) vs. log(bin width) compared to theory")
-                        plt.savefig(outdir+photdir[l]+"-"+centdir[k]+"-redchisq.png")
+                    plt.savefig(outdir+photdir[l]+"-"+centdir[k]+"-redchisq.png")
 
             # If not binning, use regular photometry
             else:
