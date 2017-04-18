@@ -21,7 +21,7 @@ You have to compile the [MCcubed](https://github.com/pcubillos/MCcubed) package:
   cd ..
 ```
 
-To run the code, first copy all p3, p4, and p5 data outputs from POET to the zen directory. Then edit zen.cfg to your liking and execute with
+Edit zen.cfg to your liking. At the very least, you need to specify the location of the files to be read (poetdir, cent, phot) and execute with
 ```shell
   zen.py <eventname> zen.cfg
 ```
