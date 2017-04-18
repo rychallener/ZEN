@@ -1,6 +1,9 @@
 #em 2 nov 2015
 
 import numpy as np
+import sys
+sys.path.insert(1, "./mccubed/")
+import MCcubed as mc3
 
 def zen_init(data, pixels):
 	"""
@@ -303,3 +306,75 @@ def reschisq(y, x, yerr):
     # have any effect).
     chisq = np.sum((np.log10(y) - line)**2/np.median(yerr)**2)
     return chisq
+
+def do_bin(bintry, phasegood, phatgood, phot, photerr, params, npix, stepsize, pmin, pmax, chisqarray, index):
+    '''
+    Function to be launched with multiprocessing.
+
+    Returns
+    -------
+    chisq: float
+       The chi-squared of binned residuals against a line of slope -1/2.
+       See Deming et al. 2015
+    '''
+    # Optimize bin size
+    print("Optimizing bin size.")
+    for i in range(len(bintry)):
+        print("Least-squares optimization for " + str(bintry[i])
+              + " points per bin.")
+
+        # Bin the phase and phat
+        for j in range(npix):
+            if j == 0:
+                binphase,     binphat = bindata(phasegood, phatgood[:,j], bintry[i])
+            else:
+                binphase, tempbinphat = bindata(phasegood, phatgood[:,j], bintry[i])
+                binphat = np.column_stack((binphat, tempbinphat))
+                # Bin the photometry and error
+                # Phase is binned again but is identical to
+                # the previously binned phase.
+        binphase, binphot, binphoterr = bindata(phasegood, phot, bintry[i], yerr=photerr)
+
+        # Normalize
+        photnorm    = phot    / phot.mean()
+        photerrnorm = photerr / phot.mean()
+
+        binphotnorm    = binphot    / binphot.mean()
+        binphoterrnorm = binphoterr / binphot.mean()
+
+        # Minimize chi-squared for this bin size
+        indparams = [binphase, binphat, npix]
+        chisq, fitbestp, dummy, dummy = mc3.fit.modelfit(params, zen,
+                                                         binphotnorm,
+                                                         binphoterrnorm,
+                                                         indparams,
+                                                         stepsize,
+                                                         pmin, pmax)
+
+        # Calculate model on unbinned data from parameters of the
+        # chi-squared minimization with this bin size. Calculate
+        # residuals for binning
+        sdnr        = []
+        binlevel    = []
+        err         = []
+        resppb      = 1
+        unbinnedres = photnorm - zen(fitbestp, phasegood, phatgood, npix)
+        resbin = len(phasegood)
+
+        # Bin the residuals, calculate SDNR of binned residuals. Do this
+        # until you are binning to <= 16 points remaining.
+        while resbin > 16:
+            dummy, binnedres = bindata(phasegood, unbinnedres, resppb)
+            sdnr.append(np.std(binnedres))
+            binlevel.append(resppb)
+            err.append(np.std(binnedres)/(2.0*len(binnedres)))
+            resppb *= 2
+            resbin = int(resbin / 2)
+
+        # Calculate chisquared of the various SDNR wrt line of slope -0.5
+        # passing through the SDNR of the unbinned residuals
+        # Record chisquared
+        sdnr     = np.asarray(sdnr)
+        binlevel = np.asarray(binlevel)
+        sdnrchisq = reschisq(sdnr, binlevel, err)
+        chisqarray[i,index[0],index[1]] = sdnrchisq
