@@ -82,7 +82,10 @@ def main():
     # Get slope threshold
     slopethresh = float(configdict['slopethresh'])
 
-    # Get preclip
+    # Get number of binning processes
+    nprocbin    = int(configdict['nprocbin'])
+
+    # Get clip
     preclip  = float(configdict['preclip'])
     postclip = float(configdict['postclip'])
 
@@ -104,7 +107,9 @@ def main():
     chislope   = mp.Array('d', np.zeros(len(bintry)  *
                                         len(photdir) *
                                         len(centdir)))
-    
+
+    # Current number of processes running
+    procs = 0 
     # Giant loop over all specified apertures and centering methods
     for l in range(len(photdir)):
         for k in range(len(centdir)):            
@@ -191,6 +196,22 @@ def main():
                 jobs.append(p)
                 p.start()
 
+                # Check how many processes we have
+                procs = 0
+                for proc in jobs:
+                    if proc.is_alive():
+                        procs += 1
+
+                # If we are at the limit, wait for everybody
+                # to finish before making more processes.
+                # This isn't the most efficient way to
+                # do things, but it is better than spawning
+                # 100 processes and overloading your machine
+                print(procs)
+                if procs >= nprocbin:
+                    for proc in jobs:
+                        proc.join()
+
                 # Move this to a separate loop eventually
                 # if plots:
                 #     plt.clf()
@@ -210,7 +231,7 @@ def main():
                 binphase       = phasegood.copy()
                 binphat        = phatgood.copy()
 
-    # Wait for all the processes to finish
+    # Make sure all processes finish
     for proc in jobs:
         proc.join()
 
