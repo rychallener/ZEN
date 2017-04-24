@@ -79,6 +79,9 @@ def main():
     # Get number of pixels to use from the config
     npix     = int(configdict['npix'])
 
+    # Get slope threshold
+    slopethresh = float(configdict['slopethresh'])
+
     # Get preclip
     preclip  = float(configdict['preclip'])
     postclip = float(configdict['postclip'])
@@ -211,7 +214,6 @@ def main():
     for proc in jobs:
         proc.join()
 
-    #chisqarray = np.asarray(chisqarray).reshape((len(bintry), len(photdir), len(centdir)))
     chisqarray = np.asarray(chisqarray).reshape((len(centdir),
                                                  len(photdir),
                                                  len(bintry)))
@@ -219,14 +221,29 @@ def main():
                                                  len(photdir),
                                                  len(bintry)))
 
-    print(chislope)
-    
+    # Initialize chibest to something ridiculous
+    chibest = 1e100
     # Determine best binning
-    bestindex = np.where(chisqarray == np.min(chisqarray))
-
-    icent = bestindex[0][0]
-    iphot = bestindex[1][0]
-    ibin  = bestindex[2][0]
+    # We also demand that the slope be less than a
+    # value, because Deming does and if the slope is
+    # too far off from -1/2, binning is not improving the
+    # fit in a sensible way
+    for i in range(len(centdir)):
+        for j in range(len(photdir)):
+            for k in range(len(bintry)):
+                print(chisqarray[i,j,k])
+                print(chislope  [i,j,k])
+                print("Threshold: " + str(slopethresh))
+                print("Chi-best: " + str(chibest))
+                print(chislope[i,j,k] < slopethresh)
+                print(chisqarray[i,j,k] < chibest)
+                if chisqarray[i,j,k] < chibest and chislope[i,j,k] < slopethresh:
+                    print('passed')
+                    chibest   = chisqarray[i,j,k]
+                    slopebest = chislope  [i,j,k]
+                    icent = i
+                    iphot = j
+                    ibin  = k
 
     print("Best aperture:  " +     photdir[iphot])
     print("Best centering: " +     centdir[icent])
