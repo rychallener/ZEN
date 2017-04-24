@@ -4,6 +4,7 @@ import numpy as np
 import sys
 sys.path.insert(1, "./mccubed/")
 import MCcubed as mc3
+import matplotlib.pyplot as plt
 
 def zen_init(data, pixels):
 	"""
@@ -299,15 +300,20 @@ def reschisq(y, x, yerr):
     a line with slope -0.5. Used to check residual binning.
     '''
     m = -0.5
-    line = np.log10(y[0]) + m * (np.log10(x) - np.log10(x[0]))
+    line = 10.0**(np.log10(y[0]) + m * np.log10(x))
+    diff = y - line
     # We use median of the error here just because the first implementation
     # of PLD does. It is probably better to weight each point
     # individually (and in fact, weighting them equally should not
     # have any effect).
-    chisq = np.sum((np.log10(y) - line)**2/np.median(yerr)**2)
-    return chisq
+    chisq = np.sum(diff**2/np.median(yerr)**2)
+    # Actually fit a line and find the slope. This will be used later
+    # to discard some fits
+    fit = np.polyfit(np.log10(x), np.log10(y), 1)
+    slope = fit[0]
+    return chisq, slope
 
-def do_bin(bintry, phasegood, phatgood, phot, photerr, params, npix, stepsize, pmin, pmax, chisqarray, index):
+def do_bin(bintry, phasegood, phatgood, phot, photerr, params, npix, stepsize, pmin, pmax, chisqarray, chislope, photind, centind, nphot):
     '''
     Function to be launched with multiprocessing.
 
@@ -316,12 +322,18 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr, params, npix, stepsize, p
     chisq: float
        The chi-squared of binned residuals against a line of slope -1/2.
        See Deming et al. 2015
+
+    Notes
+    -----
+    This function modifies (fills in) the passed chisqarray variable.
+    It returns nothing because this function is meant to be used
+    with multiprocessing.
     '''
     # Optimize bin size
     print("Optimizing bin size.")
     for i in range(len(bintry)):
-        print("Least-squares optimization for " + str(bintry[i])
-              + " points per bin.")
+        #print("Least-squares optimization for " + str(bintry[i])
+        #      + " points per bin.")
 
         # Bin the phase and phat
         for j in range(npix):
@@ -342,6 +354,14 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr, params, npix, stepsize, p
         binphotnorm    = binphot    / binphot.mean()
         binphoterrnorm = binphoterr / binphot.mean()
 
+        # Number of parameters we are fitting
+        # This loop removes fixed parameters from the
+        # count
+        nparam = len(stepsize)
+        for ss in stepsize:
+            if ss <= 0:
+                nparam -= 1
+
         # Minimize chi-squared for this bin size
         indparams = [binphase, binphat, npix]
         chisq, fitbestp, dummy, dummy = mc3.fit.modelfit(params, zen,
@@ -360,21 +380,35 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr, params, npix, stepsize, p
         resppb      = 1
         unbinnedres = photnorm - zen(fitbestp, phasegood, phatgood, npix)
         resbin = len(phasegood)
-
+        num    = len(unbinnedres)
+        sigma = np.std(unbinnedres)   * np.sqrt(num   /(num   -nparam))
+        
         # Bin the residuals, calculate SDNR of binned residuals. Do this
         # until you are binning to <= 16 points remaining.
         while resbin > 16:
-            dummy, binnedres = bindata(phasegood, unbinnedres, resppb)
-            sdnr.append(np.std(binnedres))
+            xrem = num - resppb * resbin
+            # This part is gross. Need to clean up
+            dummy, binnedres = bindata(phasegood[xrem:],
+                                       unbinnedres[xrem:],
+                                       resppb)
+            sdnr.append(np.std(binnedres) * np.sqrt(resbin/(resbin-nparam)))
             binlevel.append(resppb)
-            err.append(np.std(binnedres)/(2.0*len(binnedres)))
+            ebar  = sigma/np.sqrt(2 * resbin)
+            err.append(ebar)
             resppb *= 2
-            resbin = int(resbin / 2)
+            resbin = int(num/resppb)
 
+        sdnr[0] = sigma
+        err[0]  = sigma/np.sqrt(2*num)
         # Calculate chisquared of the various SDNR wrt line of slope -0.5
         # passing through the SDNR of the unbinned residuals
         # Record chisquared
         sdnr     = np.asarray(sdnr)
         binlevel = np.asarray(binlevel)
-        sdnrchisq = reschisq(sdnr, binlevel, err)
-        chisqarray[i,index[0],index[1]] = sdnrchisq
+        sdnrchisq, slope = reschisq(sdnr, binlevel, err)
+        print(" Ap: "    + str(photind) +
+              " Cent: "  + str(centind) +
+              " Bin: "   + str(i)       +
+              " Chisq: " + str(sdnrchisq))
+        chisqarray[i + len(bintry) * photind + len(bintry) * nphot * centind] = sdnrchisq
+        chislope[i + len(bintry) * photind + len(bintry) * nphot * centind] = slope

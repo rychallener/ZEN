@@ -90,8 +90,18 @@ def main():
     # Initialize array of chi-squared. This will hold the chi-squared valued
     # of the binned residuals compared with a line with slope -0.5. See
     # Deming et al. 2015
-    chisqarray = np.zeros((len(bintry), len(photdir), len(centdir)))
+    #chisqarray = np.zeros((len(bintry), len(photdir), len(centdir)))
 
+    # Set up multiprocessing
+    jobs = []
+    # Multiprocessing requires 1D arrays (if we use shared memory)
+    chisqarray = mp.Array('d', np.zeros(len(bintry)  *
+                                        len(photdir) *
+                                        len(centdir)))
+    chislope   = mp.Array('d', np.zeros(len(bintry)  *
+                                        len(photdir) *
+                                        len(centdir)))
+    
     # Giant loop over all specified apertures and centering methods
     for l in range(len(photdir)):
         for k in range(len(centdir)):            
@@ -167,19 +177,26 @@ def main():
             # Do binning if desired
             if bins:
                 # Optimize bin size
-                index = [l,k]
-                print(index)
-                zf.do_bin(bintry, phasegood, phatgood, phot, photerr, params,
-                          npix, stepsize, pmin, pmax, chisqarray, index)
+                # Initialize process
+                p = mp.Process(target = zf.do_bin,
+                               args = (bintry, phasegood, phatgood, phot,
+                                       photerr, params, npix, stepsize,
+                                       pmin, pmax, chisqarray, chislope,
+                                       l, k, len(photdir)))
 
-                if plots:
-                    plt.clf()
-                    plt.plot(bintry, chisqarray[:,l,k])
-                    plt.xlabel("Bin width (ppbin)")
-                    plt.ylabel("Chi-squared")
-                    if titles:
-                        plt.title("Chi-squared of log(SDNR) vs. log(bin width) compared to theory")
-                    plt.savefig(outdir+photdir[l]+"-"+centdir[k]+"-redchisq.png")
+                # Start process
+                jobs.append(p)
+                p.start()
+
+                # Move this to a separate loop eventually
+                # if plots:
+                #     plt.clf()
+                #     plt.plot(bintry, chisqarray[:,l,k])
+                #     plt.xlabel("Bin width (ppbin)")
+                #     plt.ylabel("Chi-squared")
+                #     if titles:
+                #         plt.title("Chi-squared of log(SDNR) vs. log(bin width) compared to theory")
+                #     plt.savefig(outdir+photdir[l]+"-"+centdir[k]+"-redchisq.png")
 
             # If not binning, use regular photometry
             else:
@@ -190,15 +207,26 @@ def main():
                 binphase       = phasegood.copy()
                 binphat        = phatgood.copy()
 
+    # Wait for all the processes to finish
+    for proc in jobs:
+        proc.join()
+
+    #chisqarray = np.asarray(chisqarray).reshape((len(bintry), len(photdir), len(centdir)))
+    chisqarray = np.asarray(chisqarray).reshape((len(centdir),
+                                                 len(photdir),
+                                                 len(bintry)))
+    chislope   = np.asarray(chislope  ).reshape((len(centdir),
+                                                 len(photdir),
+                                                 len(bintry)))
+
+    print(chislope)
+    
     # Determine best binning
     bestindex = np.where(chisqarray == np.min(chisqarray))
 
-    ibin  = bestindex[0][0]
+    icent = bestindex[0][0]
     iphot = bestindex[1][0]
-    icent = bestindex[2][0]
-    print(ibin)
-    print(iphot)
-    print(icent)
+    ibin  = bestindex[2][0]
 
     print("Best aperture:  " +     photdir[iphot])
     print("Best centering: " +     centdir[icent])
