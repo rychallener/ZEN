@@ -108,8 +108,6 @@ def main():
                                         len(photdir) *
                                         len(centdir)))
 
-    # Current number of processes running
-    procs = 0 
     # Giant loop over all specified apertures and centering methods
     for l in range(len(photdir)):
         for k in range(len(centdir)):            
@@ -196,22 +194,21 @@ def main():
                 jobs.append(p)
                 p.start()
 
-                # Check how many processes we have
-                procs = 0
-                for proc in jobs:
-                    if proc.is_alive():
-                        procs += 1
-
-                # If we are at the limit, wait for everybody
-                # to finish before making more processes.
-                # This isn't the most efficient way to
-                # do things, but it is better than spawning
-                # 100 processes and overloading your machine
-                print(procs)
-                if procs >= nprocbin:
+                # This intentionally-infinite loop continuously calculates
+                # the number of running processes, then exits if the number
+                # of processes is less than the number requested. This allows
+                # additional processes to spawn as other finish, which is more
+                # efficient than waiting for them all to finish since some
+                # processes can take much longer than others
+                while True:
+                    procs = 0
                     for proc in jobs:
-                        proc.join()
+                        if proc.is_alive():
+                            procs += 1
 
+                    if procs < nprocbin:
+                        break
+                    
                 # Move this to a separate loop eventually
                 # if plots:
                 #     plt.clf()
@@ -249,17 +246,15 @@ def main():
     # value, because Deming does and if the slope is
     # too far off from -1/2, binning is not improving the
     # fit in a sensible way
+    if np.all(chislope) > slopethresh:
+        print("Slope threshold too low. Increase and rerun.")
+        print("Setting threshhold to 0.")
+        slopethresh = 0.0
+
     for i in range(len(centdir)):
         for j in range(len(photdir)):
             for k in range(len(bintry)):
-                print(chisqarray[i,j,k])
-                print(chislope  [i,j,k])
-                print("Threshold: " + str(slopethresh))
-                print("Chi-best: " + str(chibest))
-                print(chislope[i,j,k] < slopethresh)
-                print(chisqarray[i,j,k] < chibest)
                 if chisqarray[i,j,k] < chibest and chislope[i,j,k] < slopethresh:
-                    print('passed')
                     chibest   = chisqarray[i,j,k]
                     slopebest = chislope  [i,j,k]
                     icent = i
