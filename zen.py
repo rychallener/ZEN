@@ -34,6 +34,7 @@ def main():
     One function to rule them all.
     '''
 
+    print("Start: %s" % time.ctime())
     # Parse the command line arguments
     eventname = sys.argv[1]
     cfile     = sys.argv[2]
@@ -208,6 +209,9 @@ def main():
 
                     if procs < nprocbin:
                         break
+                    
+                    # Save the CPU some work.
+                    time.sleep(0.1)
                     
                 # Move this to a separate loop eventually
                 # if plots:
@@ -420,5 +424,6 @@ def main():
                   title='',
                   savedir=outdir)
 
+    print("End:  %s" % time.ctime())
 if __name__ == "__main__":
     main()
