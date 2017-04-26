@@ -250,11 +250,12 @@ def main():
     # value, because Deming does and if the slope is
     # too far off from -1/2, binning is not improving the
     # fit in a sensible way
-    if np.all(chislope) > slopethresh:
+    if all(i >= slopethresh for i in chislope.flatten()):
         print("Slope threshold too low. Increase and rerun.")
-        print("Setting threshhold to 0.")
-        slopethresh = 0.0
-
+        print("Setting threshold to 0 so run can complete.")
+        slopethresh = 0
+                
+                
     for i in range(len(centdir)):
         for j in range(len(photdir)):
             for k in range(len(bintry)):
@@ -268,6 +269,7 @@ def main():
     print("Best aperture:  " +     photdir[iphot])
     print("Best centering: " +     centdir[icent])
     print("Best binning:   " + str(bintry[ibin]))
+    print("Slope of SDNR vs Bin Size: " + str(slopebest))
 
     lf.write("Best aperture:  " +     photdir[iphot])
     lf.write("Best centering: " +     centdir[icent])
