@@ -314,7 +314,9 @@ def reschisq(y, x, yerr):
     slope = fit[0]
     return chisq, slope
 
-def do_bin(bintry, phasegood, phatgood, phot, photerr, params, npix, stepsize, pmin, pmax, chisqarray, chislope, photind, centind, nphot):
+def do_bin(bintry, phasegood, phatgood, phot, photerr,
+           params, npix, stepsize, pmin, pmax, chisqarray,
+           chislope, photind, centind, nphot, plot=False):
     '''
     Function to be launched with multiprocessing.
 
@@ -407,9 +409,19 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr, params, npix, stepsize, p
         sdnr     = np.asarray(sdnr)
         binlevel = np.asarray(binlevel)
         sdnrchisq, slope = reschisq(sdnr, binlevel, err)
+
+        # Some diagnostic plotting
+        if plot == True:
+            ax = plt.subplot(111)
+            ax.set_xscale('log')
+            ax.set_yscale('log')
+            plt.errorbar(binlevel, sdnr, yerr=err, fmt='o')
+            plt.plot(binlevel, 10**(np.log10(sdnr[0]) + (-.5) * np.log10(binlevel)))
+            plt.show()
+            
         print(" Ap: "    + str(photind) +
               " Cent: "  + str(centind) +
               " Bin: "   + str(i)       +
               " Chisq: " + str(sdnrchisq))
         chisqarray[i + len(bintry) * photind + len(bintry) * nphot * centind] = sdnrchisq
-        chislope[i + len(bintry) * photind + len(bintry) * nphot * centind] = slope
+        chislope[  i + len(bintry) * photind + len(bintry) * nphot * centind] = slope
