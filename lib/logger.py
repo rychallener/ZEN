@@ -4,7 +4,7 @@ printing to the screen and to a file. To use:
 
 import logger
 import sys
-sys.stdout = Logger()
+sys.stdout = logger.Logger('log.log')
 '''
 
 import sys
