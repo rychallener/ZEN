@@ -94,11 +94,6 @@ def main():
     bintry = np.arange(-2, 259, 4)
     bintry[0] = 1
 
-    # Initialize array of chi-squared. This will hold the chi-squared valued
-    # of the binned residuals compared with a line with slope -0.5. See
-    # Deming et al. 2015
-    #chisqarray = np.zeros((len(bintry), len(photdir), len(centdir)))
-
     # Set up multiprocessing
     jobs = []
     # Multiprocessing requires 1D arrays (if we use shared memory)
@@ -120,7 +115,8 @@ def main():
             photloc = poetdir + centdir[k] + '/' + photdir[l] + '/'
             event_chk = me.loadevent(photloc + eventname + "_p5c")
             event_pht = me.loadevent(photloc + eventname + "_pht")
-            event_ctr = me.loadevent(centloc + eventname + "_ctr", load=['data', 'uncd', 'mask'])
+            event_ctr = me.loadevent(centloc + eventname + "_ctr",
+                                     load=['data', 'uncd', 'mask'])
 
             data  = event_ctr.data
             uncd  = event_ctr.uncd
@@ -286,7 +282,8 @@ def main():
     print("Reloading best POET object.")
     event_chk = me.loadevent(photloc + eventname + "_p5c")
     event_pht = me.loadevent(photloc + eventname + "_pht")
-    event_ctr = me.loadevent(centloc + eventname + "_ctr", load=['data', 'uncd', 'mask'])
+    event_ctr = me.loadevent(centloc + eventname + "_ctr",
+                             load=['data', 'uncd', 'mask'])
 
     data  = event_ctr.data
     uncd  = event_ctr.uncd
@@ -369,10 +366,23 @@ def main():
                                                        log=outdir+log)
 
 
-    # Get initial parameters and stepsize arrays from the config
-    stepsize = [float(s) for s in configdict['stepsize'].split()]
-    params   = [float(s) for s in configdict['params'].split()]
+    bpres   = binphotnorm - zf.zen(bp, binphase, binphat, npix)
+    bpchisq = np.sum(bpres**2/binphoterrnorm**2)
 
+    nfreep = int(np.sum(stepsize > 0))
+    ndata  = len(binphotnorm)
+
+    chifactor = np.sqrt(bpchisq/(ndata - nfreep))
+    
+    scchisq = np.sum(bpres**2/(binphoterrnorm*chifactor)**2)
+    scredchisq = scchisq/(ndata - nfreep)
+
+    print('Best chi-squared:        ' + str(bpchisq))
+    print('Scaling factor:          ' + str(chifactor))
+    print('Scaled chi-squared:      ' + str(scchisq))
+    print('Scaled red. chi-squared: ' + str(scredchisq))
+
+    
     # Calculate the best-fitting model
     bestfit = zf.zen(bp, binphase, binphat, npix)
 

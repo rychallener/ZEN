@@ -203,7 +203,8 @@ def bindata(x, y, ppb, yerr=None):
         binx[i] = np.mean(x[i*ppb:(i+1)*ppb])
         biny[i] = np.mean(y[i*ppb:(i+1)*ppb])
         if type(yerr) != type(None):
-            binyerr[i] = (np.sum(yerr[i*ppb:(i+1)*ppb]**2))**.5/ppb
+            binyerr[i] = np.mean(yerr[i*ppb:(i+1)*ppb])/ppb**.5
+            #binyerr[i] = (np.sum(yerr[i*ppb:(i+1)*ppb]**2))**.5/ppb**
 
     if type(yerr) != type(None):
         return binx, biny, binyerr
