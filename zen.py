@@ -24,10 +24,11 @@ import zenplots as zp
 import matplotlib.pyplot as plt
 import ConfigParser
 sys.path.insert(1, "./mccubed/")
-sys.path.insert(2, "./poetlib")
+sys.path.insert(2, "./lib")
 import MCcubed as mc3
 import manageevent as me
 import multiprocessing as mp
+import logger
 
 def main():
     '''
@@ -52,8 +53,9 @@ def main():
 
     shutil.copy2(cfile, outdir + cfile)
 
-    logfile = 'zen.log'
-    lf = open(outdir + logfile, 'a')
+    # Set up logging of all print statements in this main file
+    logfile = outdir + 'zen.log'
+    sys.stdout = logger.Logger(logfile)
 
     # Read the config file into a dictionary
     print("Reading the config file.")
@@ -266,10 +268,6 @@ def main():
     print("Best centering: " +     centdir[icent])
     print("Best binning:   " + str(bintry[ibin]))
     print("Slope of SDNR vs Bin Size: " + str(slopebest))
-
-    lf.write("Best aperture:  " +     photdir[iphot])
-    lf.write("Best centering: " +     centdir[icent])
-    lf.write("Best binning:   " + str(bintry[ibin]))
     
     # Reload the event object
     # We don't load them all in at once because they each use a
