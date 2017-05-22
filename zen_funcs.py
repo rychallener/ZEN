@@ -316,15 +316,9 @@ def reschisq(y, x, yerr):
 
 def do_bin(bintry, phasegood, phatgood, phot, photerr,
            params, npix, stepsize, pmin, pmax, chisqarray,
-           chislope, photind, centind, nphot, plot=False):
+           chislope, photind, centind, nphot, plot=True):
     '''
     Function to be launched with multiprocessing.
-
-    Returns
-    -------
-    chisq: float
-       The chi-squared of binned residuals against a line of slope -1/2.
-       See Deming et al. 2015
 
     Notes
     -----
@@ -332,6 +326,7 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr,
     It returns nothing because this function is meant to be used
     with multiprocessing.
     '''
+    
     # Optimize bin size
     print("Optimizing bin size.")
     for i in range(len(bintry)):
@@ -341,9 +336,13 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr,
         # Bin the phase and phat
         for j in range(npix):
             if j == 0:
-                binphase,     binphat = bindata(phasegood, phatgood[:,j], bintry[i])
+                binphase,     binphat = bindata(phasegood,
+                                                phatgood[:,j],
+                                                bintry[i])
             else:
-                binphase, tempbinphat = bindata(phasegood, phatgood[:,j], bintry[i])
+                binphase, tempbinphat = bindata(phasegood,
+                                                phatgood[:,j],
+                                                bintry[i])
                 binphat = np.column_stack((binphat, tempbinphat))
                 # Bin the photometry and error
                 # Phase is binned again but is identical to
