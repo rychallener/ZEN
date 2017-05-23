@@ -316,7 +316,7 @@ def reschisq(y, x, yerr):
 
 def do_bin(bintry, phasegood, phatgood, phot, photerr,
            params, npix, stepsize, pmin, pmax, chisqarray,
-           chislope, photind, centind, nphot, plot=True):
+           chislope, photind, centind, nphot, plot=False):
     '''
     Function to be launched with multiprocessing.
 
