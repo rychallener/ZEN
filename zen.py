@@ -29,12 +29,14 @@ import MCcubed as mc3
 import manageevent as me
 import multiprocessing as mp
 import logger
+from sklearn import linear_model
 
 def main():
     '''
     One function to rule them all.
     '''
 
+    pld = False
     print("Start: %s" % time.ctime())
     # Parse the command line arguments
     eventname = sys.argv[1]
@@ -95,6 +97,9 @@ def main():
     # Width of bins to try (points per bin)
     bintry = np.arange(-2, 259, 4)
     bintry[0] = 1
+    #bintry = np.asarray([14])
+    #bintry = np.asarray([1,2,6,10,14,18])
+    #bintry = np.asarray([14])
 
     # Set up multiprocessing
     jobs = []
@@ -129,6 +134,8 @@ def main():
             clipmask = np.logical_and(preclipmask, postclipmask)
             mask     = np.logical_and(   clipmask, event_chk.good)
 
+            phasegood = event_chk.phase[mask]
+
             # Identify the bright pixels to use
             print("Identifying brightest pixels.")
             nx = data.shape[1]
@@ -137,13 +144,21 @@ def main():
             phot    = event_pht.fp.aplev[mask]
             photerr = event_pht.fp.aperr[mask]
 
+            normfactor = np.average(phot[np.where((phasegood > 0.46287) &
+                                                  (phasegood < 0.50328))])
+            
+            phot    /= normfactor
+            photerr /= normfactor
+
             xavg = np.int(np.floor(np.average(event_pht.fp.x)))
             yavg = np.int(np.floor(np.average(event_pht.fp.y)))
 
             boxsize = 10
 
-            photavg     = np.average(data[:,yavg-boxsize:yavg+boxsize,
-                                            xavg-boxsize:xavg+boxsize], axis=0)[:,:,0]
+            photavg = np.average(data[:,yavg-boxsize:yavg+boxsize,
+                                        xavg-boxsize:xavg+boxsize],
+                                 axis=0)[:,:,0]
+            
             photavgflat = photavg.flatten()
 
             # Some adjustable parameters that should be at the top of the file
@@ -177,17 +192,53 @@ def main():
 
             # Invert the new array because I lack foresight
             phatgood  = phatgood.T
-            phasegood = event_chk.phase[mask]
+
+            if pld:
+                phatgood = np.loadtxt('phat.txt', delimiter=',')
+                phasegood = np.loadtxt('phase.txt')
+                phot = np.loadtxt('phot.txt')
+                photerr = np.loadtxt('err.txt')
 
             # Do binning if desired
             if bins:
                 # Optimize bin size
+    
+                # indparams = [phasegood, phatgood, npix]
+                # print("Calculating unbinned SDNR")
+                # dummy, dummy, model, dummy = mc3.fit.modelfit(params, zf.zen,
+                #                                               phot, photerr,
+                #                                               indparams,
+                #                                               stepsize,
+                #                                               pmin, pmax)
+
+                clf = linear_model.LinearRegression(fit_intercept=False)
+                eclmodel = zf.eclipse(phasegood, params[npix:-3])
+                #eclmodel = np.loadtxt('pldecl.txt')
+
+                xx = np.append(phatgood,
+                               np.reshape(eclmodel,  (len(phasegood),1)),
+                               axis=1)
+                xx = np.append(xx,
+                               np.reshape(phasegood, (len(phasegood),1)),
+                               axis=1)
+                xx = np.append(xx,
+                               np.ones((len(phasegood),1)),
+                               axis=1)
+
+                clf.fit(xx, phot)
+
+                model = np.sum(xx*clf.coef_, axis=1)
+                
+                zeropoint = np.std(phot - model, ddof = 1)
+
+                print(zeropoint)
+                
                 # Initialize process
                 p = mp.Process(target = zf.do_bin,
                                args = (bintry, phasegood, phatgood, phot,
                                        photerr, params, npix, stepsize,
                                        pmin, pmax, chisqarray, chislope,
-                                       l, k, len(photdir)))
+                                       l, k, len(photdir), zeropoint))
 
                 # Start process
                 jobs.append(p)
@@ -334,12 +385,18 @@ def main():
     phatgood  = phatgood.T
     phasegood = event_chk.phase[mask]
 
+    if pld:
+        phatgood = np.loadtxt('phat.txt', delimiter=',')
+        phasegood = np.loadtxt('phase.txt')
+        phot = np.loadtxt('phot.txt')
+        photerr = np.loadtxt('err.txt')
+    
     print("Rebinning to the best binning.")
     binbest = bintry[ibin]
     
     binphase, binphot, binphoterr = zf.bindata(phasegood, phot, binbest, yerr=photerr)
-    binphotnorm    = binphot    / binphot.mean()
-    binphoterrnorm = binphoterr / binphot.mean()
+    binphotnorm    = binphot    / phot.mean()
+    binphoterrnorm = binphoterr / phot.mean()
 
     for j in range(npix):
         if j == 0:
@@ -347,22 +404,45 @@ def main():
         else:
             binphase, tempbinphat = zf.bindata(phasegood, phatgood[:,j], binbest)
             binphat = np.column_stack((binphat, tempbinphat))
-                
+
+    
     # And we're off!    
     print("Beginning MCMC.")
     savefile = configdict['savefile']
     log      = configdict['logfile']
     
+    # bp, CRlo, CRhi, stdp, posterior, Zchain = mc3.mcmc(binphotnorm,
+    #                                                    binphoterrnorm,
+    #                                                    func=zf.zen,
+    #                                                    indparams=[binphase,
+    #                                                               binphat,
+    #                                                               npix],
+    #                                                    cfile=cfile,
+    #                                                    savefile=outdir+savefile,
+    #                                                    log=outdir+log)
+
+    #eclmodel = np.loadtxt('pldecl.txt')
+    #binecl, dummy = zf.bindata(eclmodel, eclmodel, binbest)
+    eclmodel = zf.eclipse(binphase, params[npix:-3])
+    #binecl, dummy = zf.bindata(eclmodel, eclmodel, binbest)
+    
+    xx = np.append(binphat,
+                   np.reshape(eclmodel, (len(binphase),1)),
+                   axis=1)
+    xx = np.append(xx,
+                   np.ones((len(binphase),1)),
+                   axis=1)
+    xx = np.append(xx,
+                   np.reshape(binphase, (len(binphase),1)),
+                   axis=1)
+
     bp, CRlo, CRhi, stdp, posterior, Zchain = mc3.mcmc(binphotnorm,
                                                        binphoterrnorm,
-                                                       func=zf.zen,
-                                                       indparams=[binphase,
-                                                                  binphat,
-                                                                  npix],
+                                                       func=zf.zen2,
+                                                       indparams=[xx],
                                                        cfile=cfile,
                                                        savefile=outdir+savefile,
                                                        log=outdir+log)
-
 
     bpres   = binphotnorm - zf.zen(bp, binphase, binphat, npix)
     bpchisq = np.sum(bpres**2/binphoterrnorm**2)
@@ -382,7 +462,13 @@ def main():
 
     
     # Calculate the best-fitting model
-    bestfit = zf.zen(bp, binphase, binphat, npix)
+    #bestfit = zf.zen(bp, binphase, binphat, npix)
+    bestfit = zf.zen2(bp, xx)
+
+    plt.clf()
+    plt.errorbar(binphase, binphotnorm, binphoterrnorm)
+    plt.plot(binphase, bestfit)
+    plt.savefig('test.png')
 
     # Get parameter names array to match params with names
     parnames = configdict["parname"].split()
@@ -392,12 +478,13 @@ def main():
 
     for i in range(len(noeclParams)):
         if parnames[i] == 'Depth':
-            noeclParams[i] == 0
+            noeclParams[i] = 0
             depth = bp[i]
         else:
             noeclParams[i] = bp[i]
 
-    noeclfit = zf.zen(noeclParams, binphase, binphat, npix)
+    #noeclfit = zf.zen(noeclParams, binphase, binphat, npix)
+    noeclfit = zf.zen2(noeclParams, xx)
 
     bestecl = depth*(zf.eclipse(binphase, bp[npix:npix+necl])-1) + 1
 

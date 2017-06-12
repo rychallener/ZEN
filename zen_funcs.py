@@ -5,6 +5,7 @@ import sys
 sys.path.insert(1, "./mccubed/")
 import MCcubed as mc3
 import matplotlib.pyplot as plt
+from sklearn import linear_model
 
 def zen_init(data, pixels):
 	"""
@@ -72,6 +73,83 @@ def zen_init(data, pixels):
 	dP	= phat - pbar
 
 	return(phat, dP)
+
+def drakeorb(x, eclpars):
+        omega = eclpars[0]
+        ecc   = eclpars[1]
+        midpt = eclpars[2]
+        per   = eclpars[3]
+        a     = eclpars[3]
+        inc   = eclpars[4]
+
+        t = x * per
+        
+        f1 = 1.5*np.pi-omega*np.pi/180.
+
+        tp = midpt + per * np.sqrt(1.0-ecc**2)/2.0/np.pi * (ecc*np.sin(f1)/(1.0+e1*np.cos(f1)) \
+             -2.0/np.sqrt(1.0-ecc**2)*np.arctan(np.sqrt(1.0-ecc**2)*np.tan(.5*f1)/(1.0+ecc)))
+
+        m = 1.0 * np.pi/per * (t - tp)
+
+        f = kepler(m,ecc)
+
+        nm = m.shape
+        ekep = np.zeros(nm)
+
+        if ecc != 0.0:
+          ekep = ekepler(m,ecc)
+          f = 2.0 * np.arctan(np.sqrt((1.0+ecc)/(1.0-ecc))*np.tan(0.5*ekep))
+        else:
+          f = m
+
+        nm0 = np.where(m == 0.0)
+
+        if np.sum(nm0) >= 0.0:
+          f[nm0] = 0.0
+
+        radius = a * (1.0-ecc**2) / (1.0 + ecc * np.cos(f))
+
+        z0 = radius * np.sqrt(1.0 - (np.sin(inc * np.pi/180.0) * np.sin(omega * np.pi/180.0 + f))**2)
+
+        
+def kepler(m,ecc):
+        nm = m.shape
+        ekep = np.zeros(nm)
+
+        if ecc != 0.0:
+          ekep = ekepler(m,ecc)
+          f = 2.0 * np.arctan(np.sqrt((1.0+ecc)/(1.0-ecc))*np.tan(0.5*ekep))
+        else:
+          f = m
+
+        nm0 = np.where(m == 0.0)
+
+        if np.sum(nm0) >= 0.0:
+          f[nm0] = 0.0
+
+        return f
+
+def ekepler(m, ecc):
+        eps = 1.0 - 10
+        pi2 = 2.0 * np.arccos(-1.0)
+        ms = m % pi2
+        d3 = 1e10
+        e0 = ms + ecc * 0.85 * np.sin(ms) / np.abs(np.sin(ms))
+
+        while(max(abs(d3)) > eps):
+          f3 = ecc * np.cos(e0)
+          f2 = ecc * np.sin(e0)
+          f1 = 1.0 - f3
+          f0 = e0 - ms - f2
+          d1 = -f0 / f1
+          d2 = -f0 / (f1 + 0.5 * d1 * f2)
+          d3 = -f0 / (f1 + 0.5 * d2 * (f2 + d2 * f3 / 3))
+          e0 = e0 + d3
+
+        ekep = e0 + m - ms
+
+        return ekep
+               
 
 def eclipse(t, eclparams):
 	"""
@@ -178,6 +256,12 @@ def zen(par, x, phat, npix):
 	# FINDME: remove hard-coded number of ramp params
 	eclparams = par[npix:-3]
 	eclmodel = eclipse(x, eclparams)
+        #eclmodel = np.loadtxt('pldecl.txt') + 1
+        #dummy, eclmodel = bindata(x, eclmodel, 1)
+        #time = np.loadtxt('time.txt')
+        #dummy, time = bindata(x, time, 1)
+        #pldphase = np.loadtxt('phase.txt')
+        #eclmodel = np.interp(x, pldphase, pldecl)
 	
 	# Calculate the sum of the flux from all considered pixels
 	for i in range(npix):
@@ -185,10 +269,13 @@ def zen(par, x, phat, npix):
 
 	# Calculate the model
 	# FINDME: allow for general ramp function
-	#y = ((1 + PLD) + (eclmodel - 1) + (par[-3] + par[-2]*x + par[-1]*x**2))*eclparams[-1]
-
 	y = PLD + eclparams[-1] * (eclmodel - 1) + (par[-3] + par[-2]*x + par[-1]*x**2)
+
 	return y
+
+def zen2(params, xx):
+    newpar = np.append(params[:12], params[17:20])
+    return np.sum(xx*newpar, axis=1)
 
 def bindata(x, y, ppb, yerr=None):
     nbin = int(len(x)/ppb)
@@ -295,19 +382,27 @@ def get_params(bestP, stepsize, params):
             
     return allParams
 
-def reschisq(y, x, yerr):
+def reschisq(y, x, yerr, zeropoint):
     '''
     Little function to calculate chisq of a log data set against
     a line with slope -0.5. Used to check residual binning.
     '''
     m = -0.5
-    line = 10.0**(np.log10(y[0]) + m * np.log10(x))
+    line = 10.0**(np.log10(zeropoint) + m * np.log10(x))
     diff = y - line
     # We use median of the error here just because the first implementation
     # of PLD does. It is probably better to weight each point
     # individually (and in fact, weighting them equally should not
     # have any effect).
-    chisq = np.sum(diff**2/np.median(yerr)**2)
+
+    # Determine median in the manner IDL does. Since err is
+    # always increasing, we can just index at the middle
+    if len(yerr) % 2 == 0:
+      errmed = yerr[len(yerr)/2]
+    else:
+      errmed = np.median(yerr)
+      
+    chisq = np.sum(diff**2/errmed**2)
     # Actually fit a line and find the slope. This will be used later
     # to discard some fits
     fit = np.polyfit(np.log10(x), np.log10(y), 1)
@@ -316,7 +411,8 @@ def reschisq(y, x, yerr):
 
 def do_bin(bintry, phasegood, phatgood, phot, photerr,
            params, npix, stepsize, pmin, pmax, chisqarray,
-           chislope, photind, centind, nphot, plot=False):
+           chislope, photind, centind, nphot, zeropoint,
+           plot=False):
     '''
     Function to be launched with multiprocessing.
 
@@ -350,11 +446,11 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr,
         binphase, binphot, binphoterr = bindata(phasegood, phot, bintry[i], yerr=photerr)
 
         # Normalize
-        photnorm    = phot    / phot.mean()
-        photerrnorm = photerr / phot.mean()
+        photnorm    = phot    #/ phot.mean()
+        photerrnorm = photerr #/ phot.mean()
 
-        binphotnorm    = binphot    / binphot.mean()
-        binphoterrnorm = binphoterr / binphot.mean()
+        binphotnorm    = binphot    #/ phot.mean()
+        binphoterrnorm = binphoterr #/ phot.mean()
 
         # Number of parameters we are fitting
         # This loop removes fixed parameters from the
@@ -364,14 +460,55 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr,
             if ss <= 0:
                 nparam -= 1
 
-        # Minimize chi-squared for this bin size
-        indparams = [binphase, binphat, npix]
-        chisq, fitbestp, dummy, dummy = mc3.fit.modelfit(params, zen,
-                                                         binphotnorm,
-                                                         binphoterrnorm,
-                                                         indparams,
-                                                         stepsize,
-                                                         pmin, pmax)
+        nparam = 14.
+
+        #Minimize chi-squared for this bin size
+        # indparams = [binphase, binphat, npix]
+        # chisq, fitbestp, dummy, dummy = mc3.fit.modelfit(params, zen,
+        #                                                  binphotnorm,
+        #                                                  binphoterrnorm,
+        #                                                  indparams,
+        #                                                  stepsize,
+        #                                                  pmin, pmax,
+        #                                                  lm=True)
+        # unbinnedres = photnorm - zen(fitbestp, phasegood, phatgood, npix)
+
+        clf = linear_model.LinearRegression(fit_intercept=False)
+        eclmodel = eclipse(phasegood, params[npix:-3])
+        #eclmodel = np.loadtxt('pldecl.txt')
+        time = phasegood
+        bintime, dummy = bindata(phasegood, eclmodel, bintry[i])
+        
+        dummy, binecl = bindata(phasegood, eclmodel, bintry[i])
+
+        #time = phasegood - phasegood[0]
+        #dummy, bintime = bindata(time, time, bintry[i])
+
+        xxubin = np.append(phatgood,
+                           np.reshape(eclmodel,  (len(phasegood),1)),
+                           axis=1)
+        xxubin = np.append(xxubin,
+                           np.ones((len(phasegood),1)),
+                           axis=1)
+        xxubin = np.append(xxubin,
+                           np.reshape(time, (len(phasegood),1)),
+                           axis=1)
+        
+        xxbin = np.append(binphat,
+                          np.reshape(binecl,   (len(binphase),1)),
+                          axis=1)
+        xxbin = np.append(xxbin,
+                          np.ones((len(binphase),1)),
+                          axis=1)
+        xxbin = np.append(xxbin,
+                          np.reshape(bintime, (len(binphase),1)),
+                          axis=1)
+        
+        clf.fit(xxbin, binphotnorm)
+
+        fitbestp = clf.coef_
+        print(fitbestp)
+        unbinnedres = photnorm - np.sum(xxubin*fitbestp, axis=1)
 
         # Calculate model on unbinned data from parameters of the
         # chi-squared minimization with this bin size. Calculate
@@ -379,35 +516,36 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr,
         sdnr        = []
         binlevel    = []
         err         = []
-        resppb      = 1
-        unbinnedres = photnorm - zen(fitbestp, phasegood, phatgood, npix)
-        resbin = len(phasegood)
-        num    = len(unbinnedres)
-        sigma = np.std(unbinnedres)   * np.sqrt(num   /(num   -nparam))
+        resppb      = 1.
+        resbin = float(len(phasegood))
+        num    = float(len(unbinnedres))
+        sigma = np.std(unbinnedres, ddof=1) * np.sqrt(num   /(num   -nparam))
         
         # Bin the residuals, calculate SDNR of binned residuals. Do this
         # until you are binning to <= 16 points remaining.
         while resbin > 16:
-            xrem = num - resppb * resbin
+            xrem = int(num - resppb * resbin)
             # This part is gross. Need to clean up
             dummy, binnedres = bindata(phasegood[xrem:],
                                        unbinnedres[xrem:],
-                                       resppb)
-            sdnr.append(np.std(binnedres) * np.sqrt(resbin/(resbin-nparam)))
+                                       int(resppb))
+            sdnr.append(np.std(binnedres, ddof=1) *
+                        np.sqrt(resbin/(resbin-nparam)))
             binlevel.append(resppb)
             ebar  = sigma/np.sqrt(2 * resbin)
             err.append(ebar)
             resppb *= 2
-            resbin = int(num/resppb)
+            resbin = np.floor(num/resppb)
 
         sdnr[0] = sigma
         err[0]  = sigma/np.sqrt(2*num)
+
         # Calculate chisquared of the various SDNR wrt line of slope -0.5
         # passing through the SDNR of the unbinned residuals
         # Record chisquared
         sdnr     = np.asarray(sdnr)
         binlevel = np.asarray(binlevel)
-        sdnrchisq, slope = reschisq(sdnr, binlevel, err)
+        sdnrchisq, slope = reschisq(sdnr, binlevel, err, zeropoint)
 
         # Some diagnostic plotting
         if plot == True:
@@ -415,7 +553,10 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr,
             ax.set_xscale('log')
             ax.set_yscale('log')
             plt.errorbar(binlevel, sdnr, yerr=err, fmt='o')
-            plt.plot(binlevel, 10**(np.log10(sdnr[0]) + (-.5) * np.log10(binlevel)))
+            plt.plot(binlevel,
+                     10**(np.log10(sdnr[0]) + (-.5) * np.log10(binlevel)))
+            plt.xlim((10**-.1,10**2.8))
+            plt.ylim((10**-3.8,10**-2.4))
             plt.show()
             
         print(" Ap: "    + str(photind) +
