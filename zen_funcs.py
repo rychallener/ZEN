@@ -412,7 +412,7 @@ def reschisq(y, x, yerr, zeropoint):
 def do_bin(bintry, phasegood, phatgood, phot, photerr,
            params, npix, stepsize, pmin, pmax, chisqarray,
            chislope, photind, centind, nphot, zeropoint,
-           plot=False):
+           regress, plot=False):
     '''
     Function to be launched with multiprocessing.
 
@@ -460,55 +460,56 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr,
             if ss <= 0:
                 nparam -= 1
 
-        nparam = 14.
-
         #Minimize chi-squared for this bin size
-        # indparams = [binphase, binphat, npix]
-        # chisq, fitbestp, dummy, dummy = mc3.fit.modelfit(params, zen,
-        #                                                  binphotnorm,
-        #                                                  binphoterrnorm,
-        #                                                  indparams,
-        #                                                  stepsize,
-        #                                                  pmin, pmax,
-        #                                                  lm=True)
-        # unbinnedres = photnorm - zen(fitbestp, phasegood, phatgood, npix)
+        if regress == False:
+            print("ITS WORKING!!")
+            indparams = [binphase, binphat, npix]
+            chisq, fitbestp, dummy, dummy = mc3.fit.modelfit(params, zen,
+                                                         binphotnorm,
+                                                         binphoterrnorm,
+                                                         indparams,
+                                                         stepsize,
+                                                         pmin, pmax,
+                                                         lm=True)
+            unbinnedres = photnorm - zen(fitbestp, phasegood, phatgood, npix)
+            
+        else:
+            clf = linear_model.LinearRegression(fit_intercept=False)
+            eclmodel = eclipse(phasegood, params[npix:-3])
+            #eclmodel = np.loadtxt('pldecl.txt')
+            time = phasegood
+            bintime, dummy = bindata(phasegood, eclmodel, bintry[i])
 
-        clf = linear_model.LinearRegression(fit_intercept=False)
-        eclmodel = eclipse(phasegood, params[npix:-3])
-        #eclmodel = np.loadtxt('pldecl.txt')
-        time = phasegood
-        bintime, dummy = bindata(phasegood, eclmodel, bintry[i])
-        
-        dummy, binecl = bindata(phasegood, eclmodel, bintry[i])
+            dummy, binecl = bindata(phasegood, eclmodel, bintry[i])
 
-        #time = phasegood - phasegood[0]
-        #dummy, bintime = bindata(time, time, bintry[i])
+            #time = phasegood - phasegood[0]
+            #dummy, bintime = bindata(time, time, bintry[i])
 
-        xxubin = np.append(phatgood,
-                           np.reshape(eclmodel,  (len(phasegood),1)),
-                           axis=1)
-        xxubin = np.append(xxubin,
-                           np.ones((len(phasegood),1)),
-                           axis=1)
-        xxubin = np.append(xxubin,
-                           np.reshape(time, (len(phasegood),1)),
-                           axis=1)
-        
-        xxbin = np.append(binphat,
-                          np.reshape(binecl,   (len(binphase),1)),
-                          axis=1)
-        xxbin = np.append(xxbin,
-                          np.ones((len(binphase),1)),
-                          axis=1)
-        xxbin = np.append(xxbin,
-                          np.reshape(bintime, (len(binphase),1)),
-                          axis=1)
-        
-        clf.fit(xxbin, binphotnorm)
+            xxubin = np.append(phatgood,
+                               np.reshape(eclmodel,  (len(phasegood),1)),
+                               axis=1)
+            xxubin = np.append(xxubin,
+                               np.ones((len(phasegood),1)),
+                               axis=1)
+            xxubin = np.append(xxubin,
+                               np.reshape(time, (len(phasegood),1)),
+                               axis=1)
 
-        fitbestp = clf.coef_
-        print(fitbestp)
-        unbinnedres = photnorm - np.sum(xxubin*fitbestp, axis=1)
+            xxbin = np.append(binphat,
+                              np.reshape(binecl,   (len(binphase),1)),
+                              axis=1)
+            xxbin = np.append(xxbin,
+                              np.ones((len(binphase),1)),
+                              axis=1)
+            xxbin = np.append(xxbin,
+                              np.reshape(bintime, (len(binphase),1)),
+                              axis=1)
+
+            clf.fit(xxbin, binphotnorm)
+
+            fitbestp = clf.coef_
+            print(fitbestp)
+            unbinnedres = photnorm - np.sum(xxubin*fitbestp, axis=1)
 
         # Calculate model on unbinned data from parameters of the
         # chi-squared minimization with this bin size. Calculate

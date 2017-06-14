@@ -37,6 +37,8 @@ def main():
     '''
 
     pld = False
+    regress = False
+    
     print("Start: %s" % time.ctime())
     # Parse the command line arguments
     eventname = sys.argv[1]
@@ -80,6 +82,9 @@ def main():
     params   = [float(s) for s in configdict['params'  ].split()]
     pmin     = [float(s) for s in configdict['pmin'    ].split()]
     pmax     = [float(s) for s in configdict['pmax'    ].split()]
+
+    # Get parameter names array to match params with names
+    parnames = configdict["parname"].split()
 
     # Get number of pixels to use from the config
     npix     = int(configdict['npix'])
@@ -144,6 +149,7 @@ def main():
             phot    = event_pht.fp.aplev[mask]
             photerr = event_pht.fp.aperr[mask]
 
+            # FINDME: fix this
             normfactor = np.average(phot[np.where((phasegood > 0.46287) &
                                                   (phasegood < 0.50328))])
             
@@ -199,21 +205,21 @@ def main():
                 phot = np.loadtxt('phot.txt')
                 photerr = np.loadtxt('err.txt')
 
-            # Do binning if desired
-            if bins:
-                # Optimize bin size
-    
-                # indparams = [phasegood, phatgood, npix]
-                # print("Calculating unbinned SDNR")
-                # dummy, dummy, model, dummy = mc3.fit.modelfit(params, zf.zen,
-                #                                               phot, photerr,
-                #                                               indparams,
-                #                                               stepsize,
-                #                                               pmin, pmax)
 
+            print(np.where(parnames == 'Midpt'))
+            #midpt = params[(parnames == 'Midpt')]
+            midpt = params[12]
+                
+            trymid = np.linspace(midpt - 0.01, midpt + 0.01, 100)
+
+            chibest = 1e300
+            
+            for m in range(len(trymid)):
                 clf = linear_model.LinearRegression(fit_intercept=False)
-                eclmodel = zf.eclipse(phasegood, params[npix:-3])
-                #eclmodel = np.loadtxt('pldecl.txt')
+
+                eclpars = np.asarray(params[npix:-3])
+                eclpars[0] = trymid[m]
+                eclmodel = zf.eclipse(phasegood, eclpars)
 
                 xx = np.append(phatgood,
                                np.reshape(eclmodel,  (len(phasegood),1)),
@@ -227,9 +233,53 @@ def main():
 
                 clf.fit(xx, phot)
 
-                model = np.sum(xx*clf.coef_, axis=1)
-                
-                zeropoint = np.std(phot - model, ddof = 1)
+                model = np.sum(clf.coef_*xx,axis=1)
+
+                chitry = np.sum((phot - model)**2/photerr**2)
+
+                if chitry < chibest:
+                    chibest = chitry
+                    midbest = trymid[m]
+                    
+
+            print(midbest)
+            params[12] = midbest
+            #params[np.where(parnames == 'Midpt')] = midbest
+            # Do binning if desired
+            if bins:
+                # Optimize bin size
+
+                if regress == False:
+                    indparams = [phasegood, phatgood, npix]
+                    print("Calculating unbinned SDNR")
+                    dummy, dummy, model, dummy = mc3.fit.modelfit(params, zf.zen,
+                                                              phot, photerr,
+                                                              indparams,
+                                                              stepsize,
+                                                              pmin, pmax)
+
+                    zeropoint = np.std(phot - model)
+
+                else:
+                    clf = linear_model.LinearRegression(fit_intercept=False)
+                    eclmodel = zf.eclipse(phasegood, params[npix:-3])
+                    #eclmodel = np.loadtxt('pldecl.txt')
+
+                    xx = np.append(phatgood,
+                                   np.reshape(eclmodel,  (len(phasegood),1)),
+                                   axis=1)
+                    xx = np.append(xx,
+                                   np.reshape(phasegood, (len(phasegood),1)),
+                                   axis=1)
+                    xx = np.append(xx,
+                                   np.ones((len(phasegood),1)),
+                                   axis=1)
+
+                    clf.fit(xx, phot)
+
+                    model = np.sum(xx*clf.coef_, axis=1)
+
+                    zeropoint = np.std(phot - model, ddof = 1)
 
                 print(zeropoint)
                 
@@ -238,7 +288,8 @@ def main():
                                args = (bintry, phasegood, phatgood, phot,
                                        photerr, params, npix, stepsize,
                                        pmin, pmax, chisqarray, chislope,
-                                       l, k, len(photdir), zeropoint))
+                                       l, k, len(photdir), zeropoint,
+                                       regress))
 
                 # Start process
                 jobs.append(p)
@@ -410,41 +461,44 @@ def main():
     print("Beginning MCMC.")
     savefile = configdict['savefile']
     log      = configdict['logfile']
-    
-    # bp, CRlo, CRhi, stdp, posterior, Zchain = mc3.mcmc(binphotnorm,
-    #                                                    binphoterrnorm,
-    #                                                    func=zf.zen,
-    #                                                    indparams=[binphase,
-    #                                                               binphat,
-    #                                                               npix],
-    #                                                    cfile=cfile,
-    #                                                    savefile=outdir+savefile,
-    #                                                    log=outdir+log)
 
-    #eclmodel = np.loadtxt('pldecl.txt')
-    #binecl, dummy = zf.bindata(eclmodel, eclmodel, binbest)
-    eclmodel = zf.eclipse(binphase, params[npix:-3])
-    #binecl, dummy = zf.bindata(eclmodel, eclmodel, binbest)
-    
-    xx = np.append(binphat,
-                   np.reshape(eclmodel, (len(binphase),1)),
-                   axis=1)
-    xx = np.append(xx,
-                   np.ones((len(binphase),1)),
-                   axis=1)
-    xx = np.append(xx,
-                   np.reshape(binphase, (len(binphase),1)),
-                   axis=1)
-
-    bp, CRlo, CRhi, stdp, posterior, Zchain = mc3.mcmc(binphotnorm,
+    if regress == False:
+        bp, CRlo, CRhi, stdp, posterior, Zchain = mc3.mcmc(binphotnorm,
                                                        binphoterrnorm,
-                                                       func=zf.zen2,
-                                                       indparams=[xx],
+                                                       func=zf.zen,
+                                                       indparams=[binphase,
+                                                                  binphat,
+                                                                  npix],
                                                        cfile=cfile,
                                                        savefile=outdir+savefile,
                                                        log=outdir+log)
 
-    bpres   = binphotnorm - zf.zen(bp, binphase, binphat, npix)
+        bpres   = binphotnorm - zf.zen(bp, binphase, binphat, npix)
+    else:
+        #eclmodel = np.loadtxt('pldecl.txt')
+        #binecl, dummy = zf.bindata(eclmodel, eclmodel, binbest)
+        eclmodel = zf.eclipse(binphase, params[npix:-3])
+        #binecl, dummy = zf.bindata(eclmodel, eclmodel, binbest)
+
+        xx = np.append(binphat,
+                       np.reshape(eclmodel, (len(binphase),1)),
+                       axis=1)
+        xx = np.append(xx,
+                       np.ones((len(binphase),1)),
+                       axis=1)
+        xx = np.append(xx,
+                       np.reshape(binphase, (len(binphase),1)),
+                       axis=1)
+
+        bp, CRlo, CRhi, stdp, posterior, Zchain = mc3.mcmc(binphotnorm,
+                                                           binphoterrnorm,
+                                                           func=zf.zen2,
+                                                           indparams=[xx],
+                                                           cfile=cfile,
+                                                           savefile=outdir+savefile,
+                                                           log=outdir+log)
+        bpres = binphotnorm - zf.zen2(bp, xx)
+     
     bpchisq = np.sum(bpres**2/binphoterrnorm**2)
 
     nfreep = int(np.sum(stepsize > 0))
@@ -459,16 +513,6 @@ def main():
     print('Scaling factor:          ' + str(chifactor))
     print('Scaled chi-squared:      ' + str(scchisq))
     print('Scaled red. chi-squared: ' + str(scredchisq))
-
-    
-    # Calculate the best-fitting model
-    #bestfit = zf.zen(bp, binphase, binphat, npix)
-    bestfit = zf.zen2(bp, xx)
-
-    plt.clf()
-    plt.errorbar(binphase, binphotnorm, binphoterrnorm)
-    plt.plot(binphase, bestfit)
-    plt.savefig('test.png')
 
     # Get parameter names array to match params with names
     parnames = configdict["parname"].split()
