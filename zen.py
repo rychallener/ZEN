@@ -39,11 +39,6 @@ def main():
     pld = False
     regress = False
     
-    # Set up logging of all print statements in this main file
-    logfile = outdir + 'zen.log'
-    sys.stdout = logger.Logger(logfile)
-    
-    print("Start: %s" % time.ctime())
     # Parse the command line arguments
     eventname = sys.argv[1]
     cfile     = sys.argv[2]
@@ -58,7 +53,14 @@ def main():
     
     if not os.path.exists(outdir):
         os.makedirs(outdir)
+    
+    shutil.copy2(cfile, outdir + cfile)
 
+    # Set up logging of all print statements in this main file
+    logfile = outdir + 'zen.log'
+    sys.stdout = logger.Logger(logfile)        
+    print("Start: %s" % time.ctime())
+    
     shutil.copy2(cfile, outdir + cfile)
 
     # Set up logging of all print statements in this main file
