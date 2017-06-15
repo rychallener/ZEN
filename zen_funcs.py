@@ -19,15 +19,15 @@ def zen_init(data, pixels):
 	pixels: ndarray
 	  2D array coordinates of pixels to consider
 	  EX: array([[ 0,  1],
-				 [ 2,  3],
-				 [ 4,  5],
-				 [ 6,  7],
-				 [ 8,  9],
-				 [10, 11],
-				 [12, 13],
-				 [14, 15],
-				 [16, 17],
-				 [18, 19]])
+		     [ 2,  3],
+		     [ 4,  5],
+		     [ 6,  7],
+		     [ 8,  9],
+		     [10, 11],
+		     [12, 13],
+		     [14, 15],
+		     [16, 17],
+		     [18, 19]])
 
 	Returns:
 	--------
@@ -462,7 +462,6 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr,
 
         #Minimize chi-squared for this bin size
         if regress == False:
-            print("ITS WORKING!!")
             indparams = [binphase, binphat, npix]
             chisq, fitbestp, dummy, dummy = mc3.fit.modelfit(params, zen,
                                                          binphotnorm,
