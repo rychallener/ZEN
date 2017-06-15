@@ -39,6 +39,10 @@ def main():
     pld = False
     regress = False
     
+    # Set up logging of all print statements in this main file
+    logfile = outdir + 'zen.log'
+    sys.stdout = logger.Logger(logfile)
+    
     print("Start: %s" % time.ctime())
     # Parse the command line arguments
     eventname = sys.argv[1]
@@ -205,15 +209,16 @@ def main():
                 phot = np.loadtxt('phot.txt')
                 photerr = np.loadtxt('err.txt')
 
-
-            print(np.where(parnames == 'Midpt'))
             #midpt = params[(parnames == 'Midpt')]
             midpt = params[12]
                 
             trymid = np.linspace(midpt - 0.01, midpt + 0.01, 100)
 
             chibest = 1e300
-            
+
+            # Here we estimate the midpoint of the eclipse, which is
+            # necessary if using linear regression.
+            print("Estimating midpoint")
             for m in range(len(trymid)):
                 clf = linear_model.LinearRegression(fit_intercept=False)
 
@@ -242,7 +247,7 @@ def main():
                     midbest = trymid[m]
                     
 
-            print(midbest)
+            print("Midpoint guess: " + str(midbest))
             params[12] = midbest
             #params[np.where(parnames == 'Midpt')] = midbest
             # Do binning if desired
@@ -281,7 +286,7 @@ def main():
 
                     zeropoint = np.std(phot - model, ddof = 1)
 
-                print(zeropoint)
+                print("SDNR of unbinned model: " + str(zeropoint))
                 
                 # Initialize process
                 p = mp.Process(target = zf.do_bin,
@@ -527,8 +532,8 @@ def main():
         else:
             noeclParams[i] = bp[i]
 
-    #noeclfit = zf.zen(noeclParams, binphase, binphat, npix)
-    noeclfit = zf.zen2(noeclParams, xx)
+    noeclfit = zf.zen(noeclParams, binphase, binphat, npix)
+    #noeclfit = zf.zen2(noeclParams, xx)
 
     bestecl = depth*(zf.eclipse(binphase, bp[npix:npix+necl])-1) + 1
 
