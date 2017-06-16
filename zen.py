@@ -106,11 +106,12 @@ def main():
     postclip = float(configdict['postclip'])
 
     # Width of bins to try (points per bin)
-    bintry = np.arange(-2, 259, 4)
-    bintry[0] = 1
-    #bintry = np.asarray([14])
-    #bintry = np.asarray([1,2,6,10,14,18])
-    #bintry = np.asarray([14])
+    bintry = [int(s) for s in configdict['bintry'].split()]
+
+    # Make a default for bins to try
+    if bintry == [0]:
+      bintry = np.arange(-2, 259, 4)
+      bintry[0] = 1
 
     # Set up multiprocessing
     jobs = []
