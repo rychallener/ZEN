@@ -157,8 +157,9 @@ def main():
             photerr = event_pht.fp.aperr[mask]
 
             # FINDME: fix this
-            normfactor = np.average(phot[np.where((phasegood > 0.46287) &
-                                                  (phasegood < 0.50328))])
+            # normfactor = np.average(phot[np.where((phasegood > 0.46287) &
+            #                                      (phasegood < 0.50328))])
+            normfactor = np.average(phot)
             
             phot    /= normfactor
             photerr /= normfactor
@@ -212,46 +213,45 @@ def main():
                 phot = np.loadtxt('phot.txt')
                 photerr = np.loadtxt('err.txt')
 
-            #midpt = params[(parnames == 'Midpt')]
-            midpt = params[12]
-                
-            trymid = np.linspace(midpt - 0.01, midpt + 0.01, 100)
-
-            chibest = 1e300
-
             # Here we estimate the midpoint of the eclipse, which is
             # necessary if using linear regression.
-            print("Estimating midpoint")
-            for m in range(len(trymid)):
-                clf = linear_model.LinearRegression(fit_intercept=False)
+            if regress:
+                print("Estimating midpoint")
+                for m in range(len(trymid)):
+                    midpt = params[12]
+                
+                    trymid = np.linspace(midpt - 0.01, midpt + 0.01, 100)
 
-                eclpars = np.asarray(params[npix:-3])
-                eclpars[0] = trymid[m]
-                eclmodel = zf.eclipse(phasegood, eclpars)
-
-                xx = np.append(phatgood,
-                               np.reshape(eclmodel,  (len(phasegood),1)),
-                               axis=1)
-                xx = np.append(xx,
-                               np.reshape(phasegood, (len(phasegood),1)),
-                               axis=1)
-                xx = np.append(xx,
-                               np.ones((len(phasegood),1)),
-                               axis=1)
-
-                clf.fit(xx, phot)
-
-                model = np.sum(clf.coef_*xx,axis=1)
-
-                chitry = np.sum((phot - model)**2/photerr**2)
-
-                if chitry < chibest:
-                    chibest = chitry
-                    midbest = trymid[m]
+                    chibest = 1e300
                     
+                    clf = linear_model.LinearRegression(fit_intercept=False)
 
-            print("Midpoint guess: " + str(midbest))
-            params[12] = midbest
+                    eclpars = np.asarray(params[npix:-3])
+                    eclpars[0] = trymid[m]
+                    eclmodel = zf.eclipse(phasegood, eclpars)
+
+                    xx = np.append(phatgood,
+                                   np.reshape(eclmodel,  (len(phasegood),1)),
+                                   axis=1)
+                    xx = np.append(xx,
+                                   np.reshape(phasegood, (len(phasegood),1)),
+                                   axis=1)
+                    xx = np.append(xx,
+                                   np.ones((len(phasegood),1)),
+                                   axis=1)
+
+                    clf.fit(xx, phot)
+
+                    model = np.sum(clf.coef_*xx,axis=1)
+
+                    chitry = np.sum((phot - model)**2/photerr**2)
+
+                    if chitry < chibest:
+                        chibest = chitry
+                        midbest = trymid[m]
+
+                print("Midpoint guess: " + str(midbest))
+                params[12] = midbest
             #params[np.where(parnames == 'Midpt')] = midbest
             # Do binning if desired
             if bins:
