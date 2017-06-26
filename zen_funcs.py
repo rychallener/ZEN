@@ -411,8 +411,8 @@ def reschisq(y, x, yerr, zeropoint):
 
 def do_bin(bintry, phasegood, phatgood, phot, photerr,
            params, npix, stepsize, pmin, pmax, chisqarray,
-           chislope, photind, centind, nphot, zeropoint,
-           regress, plot=False):
+           chislope, photind, centind, nphot,
+           regress=False, plot=False):
     '''
     Function to be launched with multiprocessing.
 
@@ -424,6 +424,39 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr,
     '''
     
     # Optimize bin size
+    print("Calculating unbinned SDNR")
+    if regress == False:
+        indparams = [phasegood, phatgood, npix]
+        dummy, dummy, model, dummy = mc3.fit.modelfit(params, zen,
+                                                      phot, photerr,
+                                                      indparams,
+                                                      stepsize,
+                                                      pmin, pmax)
+
+        zeropoint = np.std(phot - model)
+
+    else:
+        clf = linear_model.LinearRegression(fit_intercept=False)
+        eclmodel = eclipse(phasegood, params[npix:-3])
+
+        xx = np.append(phatgood,
+                       np.reshape(eclmodel,  (len(phasegood),1)),
+                       axis=1)
+        xx = np.append(xx,
+                       np.reshape(phasegood, (len(phasegood),1)),
+                       axis=1)
+        xx = np.append(xx,
+                       np.ones((len(phasegood),1)),
+                       axis=1)
+
+        clf.fit(xx, phot)
+
+        model = np.sum(xx*clf.coef_, axis=1)
+
+        zeropoint = np.std(phot - model, ddof = 1)
+
+    print("SDNR of unbinned model: " + str(zeropoint))
+    
     print("Optimizing bin size.")
     for i in range(len(bintry)):
         #print("Least-squares optimization for " + str(bintry[i])

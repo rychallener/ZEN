@@ -156,9 +156,6 @@ def main():
             phot    = event_pht.fp.aplev[mask]
             photerr = event_pht.fp.aperr[mask]
 
-            # FINDME: fix this
-            # normfactor = np.average(phot[np.where((phasegood > 0.46287) &
-            #                                      (phasegood < 0.50328))])
             normfactor = np.average(phot)
             
             phot    /= normfactor
@@ -214,8 +211,13 @@ def main():
                 photerr = np.loadtxt('err.txt')
 
             # Here we estimate the midpoint of the eclipse, which is
-            # necessary if using linear regression.
+            # necessary if using linear regression. Note that this
+            # updates the params array
             if regress:
+                # This section has some hard-coded numbers
+                # which should be removed, and put into
+                # a config. Although I intend to remove
+                # the regression option eventually.
                 print("Estimating midpoint")
                 for m in range(len(trymid)):
                     midpt = params[12]
@@ -252,51 +254,15 @@ def main():
 
                 print("Midpoint guess: " + str(midbest))
                 params[12] = midbest
-            #params[np.where(parnames == 'Midpt')] = midbest
             # Do binning if desired
             if bins:
-                # Optimize bin size
-
-                if regress == False:
-                    indparams = [phasegood, phatgood, npix]
-                    print("Calculating unbinned SDNR")
-                    dummy, dummy, model, dummy = mc3.fit.modelfit(params, zf.zen,
-                                                              phot, photerr,
-                                                              indparams,
-                                                              stepsize,
-                                                              pmin, pmax)
-
-                    zeropoint = np.std(phot - model)
-
-                else:
-                    clf = linear_model.LinearRegression(fit_intercept=False)
-                    eclmodel = zf.eclipse(phasegood, params[npix:-3])
-                    #eclmodel = np.loadtxt('pldecl.txt')
-
-                    xx = np.append(phatgood,
-                                   np.reshape(eclmodel,  (len(phasegood),1)),
-                                   axis=1)
-                    xx = np.append(xx,
-                                   np.reshape(phasegood, (len(phasegood),1)),
-                                   axis=1)
-                    xx = np.append(xx,
-                                   np.ones((len(phasegood),1)),
-                                   axis=1)
-
-                    clf.fit(xx, phot)
-
-                    model = np.sum(xx*clf.coef_, axis=1)
-
-                    zeropoint = np.std(phot - model, ddof = 1)
-
-                print("SDNR of unbinned model: " + str(zeropoint))
-                
-                # Initialize process
+                # Optimize bin size                
+                # Initialize processes
                 p = mp.Process(target = zf.do_bin,
                                args = (bintry, phasegood, phatgood, phot,
                                        photerr, params, npix, stepsize,
                                        pmin, pmax, chisqarray, chislope,
-                                       l, k, len(photdir), zeropoint,
+                                       l, k, len(photdir),
                                        regress))
 
                 # Start process
@@ -459,9 +425,13 @@ def main():
 
     for j in range(npix):
         if j == 0:
-            binphase,     binphat = zf.bindata(phasegood, phatgood[:,j], binbest)
+            binphase,     binphat = zf.bindata(phasegood,
+                                               phatgood[:,j],
+                                               binbest)
         else:
-            binphase, tempbinphat = zf.bindata(phasegood, phatgood[:,j], binbest)
+            binphase, tempbinphat = zf.bindata(phasegood,
+                                               phatgood[:,j],
+                                               binbest)
             binphat = np.column_stack((binphat, tempbinphat))
 
     
