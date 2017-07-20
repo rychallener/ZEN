@@ -543,6 +543,39 @@ def main():
                   title='',
                   savedir=outdir)
 
+    # Calculate eclipse times in BJD_UTC and BJD_TDB
+    # Code adapted from POET p7
+    print('Calculating eclipse times in Julian days')
+    offset = event_chk.bjdtdb.flat[0] - event_chk.bjdutc.flat[0]
+    if   event_chk.timestd == 'utc':
+        ephtimeutc = event_chk.ephtime
+        ephtimetdb = event_chk.ephtime + offset
+    elif event_chk.timestd == 'tdb':
+        ephtimetdb = event_chk.ephtime
+        ephtimeutc = event_chk.ephtime - offset
+    else:
+        print('Assuming that ephemeris is reported in BJD_UTC. Verify!')
+        ephtimeutc = event_chk.ephtime
+        ephtimetdb = event_chk.ephtime + offset
+
+    print('BJD_TDB - BJD_UTC = ' + str(offset * 86400.) + ' seconds.')
+
+    bestmidpt  =    bp[parnames.index('Midpt')]
+    ecltimeerr =  stdp[parnames.index('Midpt')] * event_chk.period
+
+    startutc = event_chk.bjdutc.flat[0]
+    starttdb = event_chk.bjdtdb.flat[0]
+    
+    ecltimeutc = (np.floor((startutc-ephtimeutc)/event_chk.period) +
+                  bestmidpt * event_chk.period + ephtimeutc)
+    ecltimetdb = (np.floor((starttdb-ephtimetdb)/event_chk.period) +
+                  bestmidpt * event_chk.period + ephtimetdb)
+
+    print('Eclipse time = ' + str(ecltimeutc)
+          + '+/-' + str(ecltimeerr) + ' BJD_UTC')
+    print('Eclipse time = ' + str(ecltimetdb)
+          + '+/-' + str(ecltimeerr) + ' BJD_TDB')
+    
     print("End:  %s" % time.ctime())
 if __name__ == "__main__":
     main()
