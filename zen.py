@@ -565,11 +565,19 @@ def main():
 
     startutc = event_chk.bjdutc.flat[0]
     starttdb = event_chk.bjdtdb.flat[0]
+
+    print(startutc)
+    print(starttdb)
+    print(event_chk.period)
+    print(ephtimeutc)
+    print(ephtimetdb)
+    print(np.floor((startutc-ephtimeutc)/event_chk.period))
+    print(bestmidpt)
     
     ecltimeutc = (np.floor((startutc-ephtimeutc)/event_chk.period) +
-                  bestmidpt * event_chk.period + ephtimeutc)
+                  bestmidpt) * event_chk.period + ephtimeutc
     ecltimetdb = (np.floor((starttdb-ephtimetdb)/event_chk.period) +
-                  bestmidpt * event_chk.period + ephtimetdb)
+                  bestmidpt) * event_chk.period + ephtimetdb
 
     print('Eclipse time = ' + str(ecltimeutc)
           + '+/-' + str(ecltimeerr) + ' BJD_UTC')
@@ -577,5 +585,8 @@ def main():
           + '+/-' + str(ecltimeerr) + ' BJD_TDB')
     
     print("End:  %s" % time.ctime())
+
+
+    
 if __name__ == "__main__":
     main()
