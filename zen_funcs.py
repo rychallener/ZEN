@@ -1,11 +1,17 @@
-#em 2 nov 2015
-
 import numpy as np
 import sys
 sys.path.insert(1, "./mccubed/")
+sys.path.append('../lib')
 import MCcubed as mc3
 import matplotlib.pyplot as plt
 from sklearn import linear_model
+import time
+
+import kurucz_inten
+import transplan_tb
+
+reload(kurucz_inten)
+reload(transplan_tb)
 
 def zen_init(data, pixels):
 	"""
@@ -598,3 +604,79 @@ def do_bin(bintry, phasegood, phatgood, phot, photerr,
               " Chisq: " + str(sdnrchisq))
         chisqarray[i + len(bintry) * photind + len(bintry) * nphot * centind] = sdnrchisq
         chislope[  i + len(bintry) * photind + len(bintry) * nphot * centind] = slope
+
+
+def calcTb(bsdata, kout, filterf, event):
+    '''
+    Monte-Carlo temperature calculation. Taken from POET, P7.
+
+    Params
+    ------
+    bsdata: array
+        3 x numcalc array of eclipse depths from the MCMC, a normal
+        sampling of distribution of the log(g) of the star, and a 
+        normal sampling of the temperature of the star
+
+    kout: array
+        output of the kurucz_inten.read() function in frequency space
+
+    filterf: array
+        read-in filter file. Format is weird
+
+    event: POET event object
+
+    Returns
+    -------
+    tb: array
+        array of integral brightness temperatures from the Monte-Carlo
+
+    tbg: array
+        array of band-center brightness temperatures from the
+        Monte-Carlo
+
+    numnegf: integer
+        number of -ve flux values in allparams
+
+    fmfreq: None
+        Option for transplan_tb function. Set to none in the function
+        so it has no effect...
+    '''
+    reload(transplan_tb)
+    
+    kinten, kfreq, kgrav, ktemp, knainten, khead = kout
+    ffreq     = event.c / (filterf[:,0] * 1e-6)
+    ftrans    = filterf[:,1]
+    sz        = bsdata[1].size
+    tb        = np.zeros(sz)
+    tbg       = np.zeros(sz)
+    numnegf   = 0		#Number of -ve flux values in allparams
+    #guess    = 1        #1: Do not compute integral
+    complete  = 0
+    fmfreq    = None
+    kstar     = kurucz_inten.interp2d(kinten, kgrav, ktemp, bsdata[1], bsdata[2])
+    fmstar    = None
+    if (event.tep.rprssq.val > 0):
+      arat      = np.random.normal(event.tep.rprssq.val, event.tep.rprssq.uncert, sz)
+    else:
+      if (event.tep.rprs.val < 0):
+        print("WARNING: radius ratio undefined in TEP file.")
+      arat      = np.random.normal(event.tep.rprs.val**2, event.tep.rprs.uncert*np.sqrt(2*event.tep.rprs.val), sz)
+    for i in range(sz):
+        if bsdata[0,i] > 0:
+            fstar   = np.interp(ffreq, kfreq, kstar[i])
+            tb[i], tbg[i] = transplan_tb.transplan_tb(arat[i], bsdata[0,i],
+                                                      bsdata[1,i], bsdata[2,i],
+                                                      kfreq=kfreq, kgrav=kgrav,
+                                                      ktemp=ktemp,
+                                                      kinten=kinten,
+                                                      ffreq=ffreq,
+                                                      ftrans=ftrans,
+                                                      fmfreq=fmfreq,
+                                                      fstar=fstar,
+                                                      fmstar=fmstar)
+        else:
+            numnegf += 1
+        if (i % (sz / 5) == 0): 
+            print(str(complete * 20) + "% complete at " + time.ctime())
+            complete += 1
+    return tb, tbg, numnegf, fmfreq

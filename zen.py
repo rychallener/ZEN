@@ -29,7 +29,13 @@ import MCcubed as mc3
 import manageevent as me
 import multiprocessing as mp
 import logger
+import kurucz_inten
 from sklearn import linear_model
+
+# This forces the code to use the version
+# of kurucz_inten within the ./lib directory.
+# Must be a better way to do so.
+reload(kurucz_inten)
 
 def main():
     '''
@@ -565,14 +571,6 @@ def main():
 
     startutc = event_chk.bjdutc.flat[0]
     starttdb = event_chk.bjdtdb.flat[0]
-
-    print(startutc)
-    print(starttdb)
-    print(event_chk.period)
-    print(ephtimeutc)
-    print(ephtimetdb)
-    print(np.floor((startutc-ephtimeutc)/event_chk.period))
-    print(bestmidpt)
     
     ecltimeutc = (np.floor((startutc-ephtimeutc)/event_chk.period) +
                   bestmidpt) * event_chk.period + ephtimeutc
@@ -583,6 +581,43 @@ def main():
           + '+/-' + str(ecltimeerr) + ' BJD_UTC')
     print('Eclipse time = ' + str(ecltimetdb)
           + '+/-' + str(ecltimeerr) + ' BJD_TDB')
+
+    # Brightness temperature calculation
+    print('Starting Monte-Carlo Temperature Calculation')
+    numcalc = int(configdict['numcalc'])
+    
+    kout = kurucz_inten.read(event_chk.kuruczfile, freq=True)
+
+    filterf = np.loadtxt(event_chk.filtfile, unpack=True)
+    filterf = np.concatenate((filterf[0:2,::-1].T,[filterf[0:2,0]]))
+    
+    logg     = np.log10(event_chk.tep.g.val*100.)
+    loggerr  = np.log10(event_chk.tep.g.uncert*100.)
+    tstar    = event_chk.tstar
+    tstarerr = event_chk.tstarerr
+
+    #FINDME: remove this hard-coded 13 at some point
+    depthpost = posterior[:,13]
+    #depthpost = posterior[:,parnames.index('Depth')]
+    
+    bsdata    = np.zeros((3,numcalc))
+    bsdata[0] = depthpost[::posterior.shape[0]/numcalc]
+    bsdata[1] = np.random.normal(logg,  loggerr,  numcalc)
+    bsdata[2] = np.random.normal(tstar, tstarerr, numcalc)
+
+    tb, tbg, numnegf, fmfreq = zf.calcTb(bsdata, kout, filterf, event_chk)
+
+    tbm   = np.median(tb [np.where(tb  > 0)])
+    tbsd  = np.std(   tb [np.where(tb  > 0)])
+    tbgm  = np.median(tbg[np.where(tbg > 0)])
+    tbgsd = np.std(   tbg[np.where(tbg > 0)])
+
+    print('Band-center brightness temp = '
+          + str(round(tbgm,2)) + ' +/- '
+          + str(round(tbgsd,2)) + ' K')
+    print('Integral    brightness temp = '
+          + str(round(tbm ,2)) + ' +/- '
+          + str(round(tbsd, 2)) + ' K')
     
     print("End:  %s" % time.ctime())
 
