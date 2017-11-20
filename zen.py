@@ -31,6 +31,7 @@ import multiprocessing as mp
 import logger
 import kurucz_inten
 import irsa
+import copy
 from sklearn import linear_model
 
 # This forces the code to use the version
@@ -626,11 +627,17 @@ def main():
     tbgsd = np.std(   tbg[np.where(tbg > 0)])
 
     print('Band-center brightness temp = '
-          + str(round(tbgm,2)) + ' +/- '
-          + str(round(tbgsd,2)) + ' K')
+          + str(round(tbgm,  2)) + ' +/- '
+          + str(round(tbgsd, 2)) + ' K')
     print('Integral    brightness temp = '
-          + str(round(tbm ,2)) + ' +/- '
+          + str(round(tbm,  2)) + ' +/- '
           + str(round(tbsd, 2)) + ' K')
+
+    # Make a new event object
+    event = copy(event_chk)
+    
+    # Need to populate the event.fit object
+    event.fit = readeventhdf.fits()
 
     # Write IRSA table and FITS file
     irsa.do_irsa(event_chk, event_chk.fit)
