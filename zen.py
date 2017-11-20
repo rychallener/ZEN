@@ -30,6 +30,7 @@ import manageevent as me
 import multiprocessing as mp
 import logger
 import kurucz_inten
+import irsa
 from sklearn import linear_model
 
 # This forces the code to use the version
@@ -596,9 +597,21 @@ def main():
     tstar    = event_chk.tstar
     tstarerr = event_chk.tstarerr
 
-    #FINDME: remove this hard-coded 13 at some point
-    depthpost = posterior[:,13]
-    #depthpost = posterior[:,parnames.index('Depth')]
+    # Find index of depth
+    countfix = 0
+    for i in range(len(parnames)):
+        if parnames[i] == 'Depth':
+            idepth = i
+
+    # Count number of fixed parameters prior to the depth
+    # parameter, to adjust the idepth
+    for i in range(idepth):
+        if stepsize[i] <= 0:
+            countfix += 1
+
+    idepthpost = idepth - countfix
+    
+    depthpost = posterior[:,idepthpost]
     
     bsdata    = np.zeros((3,numcalc))
     bsdata[0] = depthpost[::posterior.shape[0]/numcalc]
@@ -618,10 +631,11 @@ def main():
     print('Integral    brightness temp = '
           + str(round(tbm ,2)) + ' +/- '
           + str(round(tbsd, 2)) + ' K')
+
+    # Write IRSA table and FITS file
+    irsa.do_irsa(event_chk, event_chk.fit)
     
     print("End:  %s" % time.ctime())
 
-
-    
 if __name__ == "__main__":
     main()

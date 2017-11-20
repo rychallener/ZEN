@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 sys.path.insert(1, "./mccubed/")
-sys.path.append('../lib')
+sys.path.append('lib')
 import MCcubed as mc3
 import matplotlib.pyplot as plt
 from sklearn import linear_model
