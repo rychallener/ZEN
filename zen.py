@@ -32,6 +32,7 @@ import logger
 import kurucz_inten
 import irsa
 import copy
+import readeventhdf
 from sklearn import linear_model
 
 # This forces the code to use the version
@@ -634,13 +635,19 @@ def main():
           + str(round(tbsd, 2)) + ' K')
 
     # Make a new event object
-    event = copy(event_chk)
+    event = copy.copy(event_chk)
     
     # Need to populate the event.fit object
     event.fit = readeventhdf.fits()
 
+    event.fit.fluxuc   = event.aplev[np.where(event.good)] # Unclipped flux
+    event.fit.clipmask = clipmask # Mask for clipping
+    event.fit.flux     = event.fit.fluxuc[clipmask] # Clipped flux
+    
+    
+
     # Write IRSA table and FITS file
-    irsa.do_irsa(event_chk, event_chk.fit)
+    irsa.do_irsa(event, event.fit)
     
     print("End:  %s" % time.ctime())
 
