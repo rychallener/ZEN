@@ -637,17 +637,18 @@ def main():
     # Make a new event object
     event = copy.copy(event_chk)
     
-    # Need to populate the event.fit object
+    # Need to populate the event.fit object with at least the
+    # minimum needed to use the do_irsa function
     event.fit = readeventhdf.fits()
 
-    event.fit.fluxuc   = event.aplev[np.where(event.good)] # Unclipped flux
-    event.fit.clipmask = clipmask # Mask for clipping
-    event.fit.flux     = event.fit.fluxuc[clipmask] # Clipped flux
-    
-    
+    event.fit.fluxuc   = event.fp.aplev[np.where(event.good)] # Unclipped flux
+    event.fit.clipmask = clipmask             # Mask for clipping
+    event.fit.flux     = event.fp.aplev[mask] # Clipped flux
+    event.fit.bestfit  = zf.zen(bp, binphase, binphat, npix) # Best fit (norm)
 
     # Write IRSA table and FITS file
-    irsa.do_irsa(event, event.fit)
+    os.mkdir(outdir + 'irsa')
+    irsa.do_irsa(event, event.fit, directory=outdir)
     
     print("End:  %s" % time.ctime())
 
