@@ -680,3 +680,24 @@ def calcTb(bsdata, kout, filterf, event):
             print(str(complete * 20) + "% complete at " + time.ctime())
             complete += 1
     return tb, tbg, numnegf, fmfreq
+
+def buildlist(stringlist):
+    '''
+    Builds a string list into a list for use in real text.
+    '''
+    string_text = ''
+    
+    if len(stringlist) == 1:
+        string_text += stringlist[0]
+    elif len(stringlist) == 2:
+        string_text += (stringlist[0] + ' and ' + stringlist[1])
+    else:
+        for i in range(len(stringlist)):
+            if i == 0:
+                string_text += (stringlist[0])
+            elif i == len(stringlist) - 1:
+                string_text += (', and ' + stringlist[i])
+            else:
+                string_text += (', '     + stringlist[i])
+
+    return string_text

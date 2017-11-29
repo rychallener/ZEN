@@ -648,7 +648,60 @@ def main():
 
     # Write IRSA table and FITS file
     os.mkdir(outdir + 'irsa')
-    irsa.do_irsa(event, event.fit, directory=outdir)
+
+    # Read info from config dict
+    papername   = configdict['papername']
+    month       = configdict['month']
+    year        = configdict['year']
+    journal     = configdict['journal']
+    instruments = configdict['instruments']
+    programs    = configdict['programs']
+    authors     = configdict['authors']
+
+    print(instruments)
+    print(type(instruments))    
+
+    # Turn info into text
+    authors    = list(authors.split('\n'))
+    instruments = list(instruments.split(' '))
+    programs   = list(programs.split(' '))
+
+    print(instruments)
+    print(type(instruments))
+
+    authors_text     = zf.buildlist(authors)
+    instruments_text = zf.buildlist(instruments)
+    programs_text    = zf.buildlist(programs)
+    
+    # Set the topstring
+    topstring = "This file contains the light curves from the paper:  " + papername + " by " + authors_text + ", which was submitted in " + month + " " + year + " to " + journal + ". The data are from the " + instruments_text + " on the NASA Spitzer Space Telescope, programs " + programs_text + ", which are availabe from the public Spitzer archive (http://sha.ipac.caltech.edu). The paper cited above and its electronic supplement, of which this file is a part, describe the observations and data analysis. The data are in an ASCII table that follows this header. The TTYPE* keywords describe the columns in the ASCII table. Units are microJanskys for flux, pixels for distance, and seconds for time. All series (pixel positions, frame number, etc.) are zero-based. Data in a table row are valid if GOOD equals 1, invalid otherwise."
+
+    # Split up topstring so that it fits in a FITS header
+    linelen = 65
+    
+    for i in range(2*len(topstring)):
+        # Initialize reformatted string
+        if i % linelen == 0 and i == linelen:
+            topstring_reformat = topstring[:i]
+            # Set a mark so we know where to begin the next chunk
+            mark = i
+        elif i % linelen == 0 and i != linelen and i != 0:
+            # Add another line of linelen characters to the topstring
+            # starting from the mark
+            topstring_reformat += ('\n' + topstring[mark:i])
+            # Update the mark
+            mark = i
+
+    # Add on any remaining trailing characters
+    topstring_reformat += topstring[mark:]
+
+    # Strip off extra newlines at the end
+    topstring_reformat = topstring_reformat.rstrip('\n')    
+
+    print(topstring_reformat)
+    
+    irsa.do_irsa(event, event.fit, directory=outdir,
+                 topstring=topstring_reformat)
     
     print("End:  %s" % time.ctime())
 
